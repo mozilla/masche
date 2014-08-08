@@ -2,10 +2,10 @@ package migmem
 
 import (
 	"bufio"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,7 +15,7 @@ import (
 // To do this we use the /proc/<pid>/maps to know which files are mapped.
 // the file format is described in `man proc`
 func HasLibrary(pid int, r *regexp.Regexp) (bool, error) {
-	path := fmt.Sprintf("/proc/%d/maps", pid)
+	path := filepath.Join("/proc", strconv.Itoa(pid), "maps")
 	f, err := os.Open(path)
 	if err != nil {
 		return false, err
@@ -27,6 +27,8 @@ func HasLibrary(pid int, r *regexp.Regexp) (bool, error) {
 		line := scanner.Text()
 
 		// Just keep the last part of the mapped filename
+		// TODO(mvanotti): Probably now that we are using regexp,
+		// we may want to do the regexp over the whole filename.
 		fields := strings.Split(line, "/")
 		if len(fields) <= 1 {
 			continue
