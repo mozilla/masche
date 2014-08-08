@@ -1,4 +1,4 @@
-package memgator
+package migmem
 
 import (
 	"bufio"

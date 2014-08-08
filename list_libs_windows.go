@@ -1,4 +1,4 @@
-package memgator
+package migmem
 
 // #cgo LDFLAGS: -lpsapi
 // #include "list_libs_windows.h"
