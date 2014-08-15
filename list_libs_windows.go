@@ -7,12 +7,20 @@ import "C"
 import (
 	"fmt"
 	"log"
+	"reflect"
 	"regexp"
 	"sort"
 	"unsafe"
 )
 
-type byPid []uint32
+type ModuleInfo struct {
+	filename   string
+	baseAddr   uintptr
+	size       uint32
+	entryPoint uintptr
+}
+
+type byPid []uint
 
 func (s byPid) Len() int {
 	return len(s)
@@ -24,51 +32,87 @@ func (s byPid) Less(i, j int) bool {
 	return s[i] < s[j]
 }
 
-func listProcesses() []uint32 {
+func listProcesses() ([]uint, error) {
 	r := C.getAllPids()
+	defer C.EnumProcessesResponse_Free(r)
 	if r.error != 0 {
-		log.Fatal(r.error)
+		return nil, fmt.Errorf("getAllPids failed with error: %d", r.error)
 	}
 
-	defer C.EnumProcessesResponse_Free(r)
+	pids := make([]uint, r.length)
 
-	fmt.Println(r.length)
-	pids := make([]uint32, r.length)
-
+	// We use this to access C arrays without doing manual pointer arithmetic.
+	cpids := *(*[]C.DWORD)(unsafe.Pointer(
+		&reflect.SliceHeader{
+			Data: uintptr(unsafe.Pointer(r.pids)),
+			Len:  int(r.length),
+			Cap:  int(r.length)}))
 	for i, _ := range pids {
-		//TODO(mvanotti): See if there's a cleaner way to convert the C array to Go.
-		address := uintptr(unsafe.Pointer(r.pids)) + unsafe.Sizeof(C.DWORD(0))*uintptr(i)
-		pids[i] = *(*uint32)(unsafe.Pointer(address))
+		pids[i] = uint(cpids[i])
 	}
 
 	sort.Sort(byPid(pids))
-	fmt.Println(pids)
-	return pids
+	return pids, nil
 }
 
-func listModules(pid uint32) []string {
+func listModules(pid uint) ([]ModuleInfo, error) {
 	r := C.getModules(C.DWORD(pid))
+	defer C.EnumProcessModulesResponse_Free(r)
 	if r.error != 0 {
-		log.Fatal(err)
-	}
-	defer C.EnumProcessModulesReponse_Free(r)
-
-	fmt.Println(r.length)
-	modules := make([]string, r.length)
-	for i, _ := range modules {
-		address := uintptr(unsafe.Pointer(r.modules)) + unsafe.Sizeof(*C.char)*uintptr(i)
-		modules[i] = C.GoString(*(**C.char)(unsafe.Pointer(address)))
+		return nil, fmt.Errorf("getModules failed with error: %d", r.error)
 	}
 
-	sort.Strings(modules)
-	fmt.Println(modules)
-	return modules
+	mods := make([]ModuleInfo, r.length)
+
+	// We use this to access C arrays without doing manual pointer arithmetic.
+	cmods := *(*[]C.ModuleInfo)(unsafe.Pointer(
+		&reflect.SliceHeader{
+			Data: uintptr(unsafe.Pointer(r.modules)),
+			Len:  int(r.length),
+			Cap:  int(r.length)}))
+
+	for i, _ := range mods {
+		mods[i] = ModuleInfo{
+			filename:   C.GoString(cmods[i].filename),
+			baseAddr:   uintptr(cmods[i].info.lpBaseOfDll),
+			size:       uint32(cmods[i].info.SizeOfImage),
+			entryPoint: uintptr(cmods[i].info.EntryPoint),
+		}
+	}
+
+	return mods, nil
 }
 
-func HasLibrary(r *regexp.Regexp) (bool, error) {
-	return true, nil
+func HasLibrary(r *regexp.Regexp, pid uint) (bool, error) {
+	mods, err := listModules(pid)
+	if err != nil {
+		return false, err
+	}
+
+	for _, m := range mods {
+		if r.MatchString(m.filename) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
-func FindProcWithLib(r *regexp.Regexp) ([]int, error) {
-	return nil, nil
+func FindProcWithLib(r *regexp.Regexp) ([]uint, error) {
+	pids, err := listProcesses()
+	if err != nil {
+		return nil, err
+	}
+
+	var res []uint
+	for _, pid := range pids {
+		if has, err := HasLibrary(r, pid); err != nil {
+			log.Println(err)
+			continue
+		} else if has {
+			res = append(res, pid)
+		}
+	}
+
+	return res, nil
 }
