@@ -2,6 +2,7 @@ package migmem
 
 import (
 	"bufio"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -15,7 +16,7 @@ import (
 // To do this we use the /proc/<pid>/maps to know which files are mapped.
 // the file format is described in `man proc`
 func HasLibrary(pid uint, r *regexp.Regexp) (bool, error) {
-	path := filepath.Join("/proc", strconv.Itoa(pid), "maps")
+	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
 	f, err := os.Open(path)
 	if err != nil {
 		return false, err
@@ -51,7 +52,7 @@ func HasLibrary(pid uint, r *regexp.Regexp) (bool, error) {
 // It works looking at all the pids listed in /proc folder, and for each of them, checking its maps file.
 func FindProcWithLib(r *regexp.Regexp) ([]uint, error) {
 	files, _ := ioutil.ReadDir("/proc/")
-	res := make([]int, 0)
+	res := make([]uint, 0)
 
 	for _, f := range files {
 		pid, err := strconv.Atoi(f.Name())
