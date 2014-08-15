@@ -76,6 +76,7 @@ closeHandle:
 		res->error = GetLastError();
 		goto cleanup;
 	}
+	free(aMods);
 
 	return res;
 	
