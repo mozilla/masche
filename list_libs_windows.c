@@ -86,6 +86,9 @@ cleanup:
 	}
 
 	free(modsInfo);
+	res->modules = NULL;
+	res->length = 0;
+
 	free(aMods);
 	
 	CloseHandle(hProcess);
