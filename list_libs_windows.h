@@ -5,9 +5,9 @@
 #include <psapi.h>
 
 typedef struct t_EnumProcessesResponse {
-  DWORD error;
-  DWORD *pids;
-  DWORD length;
+	DWORD error;
+	DWORD *pids;
+	DWORD length;
 } EnumProcessesResponse;
 
 typedef struct t_ModuleInfo {
