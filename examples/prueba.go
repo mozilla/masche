@@ -7,8 +7,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"memgator"
 	"regexp"
+
+	"github.com/mozilla/migmem"
 )
 
 var rstr = flag.String("r", "", "library name regexp")
@@ -21,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	procs, err := memgator.FindProcWithLib(r)
+	procs, err := migmem.FindProcWithLib(r)
 	if err != nil {
 		log.Fatal(err)
 	}
