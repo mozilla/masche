@@ -1,4 +1,4 @@
-package migmem
+package masche
 
 // #cgo LDFLAGS: -lpsapi
 // #include "list_libs_windows.h"

@@ -9,7 +9,7 @@ import (
 	"log"
 	"regexp"
 
-	"github.com/mozilla/migmem"
+	"github.com/mozilla/masche"
 )
 
 var rstr = flag.String("r", "", "library name regexp")
@@ -22,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	procs, err := migmem.FindProcWithLib(r)
+	procs, err := masche.FindProcWithLib(r)
 	if err != nil {
 		log.Fatal(err)
 	}

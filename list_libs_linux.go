@@ -1,4 +1,4 @@
-package migmem
+package masche
 
 import (
 	"bufio"

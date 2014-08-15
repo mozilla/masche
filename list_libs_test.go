@@ -1,4 +1,4 @@
-package migmem
+package masche
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ func TestFindProcWithLib(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	ls, err := FindProcWithLib(r)
 	fmt.Println(ls)
 }
