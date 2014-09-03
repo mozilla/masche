@@ -1,70 +1,91 @@
-package masche
+package main
 
 import (
-
-
+    "bufio"
+    "strconv"
+    "os"
+    "strings"
+    "fmt"
+    "path/filepath"
 )
 
+type mapInfo struct {
+    start int64
+    end int64
+}
 
+func mappedAdresses(pid uint) ([]mapInfo, error) {
+    path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps") 
+    f, err := os.Open(path)
+    if err != nil {
+        return nil, err
+    }
+    defer f.Close()
 
-/*
-// HasLibrary checks if a process with a given pid has a certain library.
-// To do this we use the /proc/<pid>/maps to know which files are mapped.
-// the file format is described in `man proc`
-func HasLibrary(pid uint, r *regexp.Regexp) (bool, error) {
-    path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
+    res := make([]mapInfo, 0)
+
+    scanner := bufio.NewScanner(f)
+    for scanner.Scan() {
+        line := scanner.Text()
+
+        items := strings.Split(line, " ")
+        if len(items) <= 1 {
+            continue
+        }
+        if (items[len(items)-1] == "[heap]" || items[len(items)-1] == "[stack]"){
+            fields := strings.Split(items[0], "-")
+            start, _ := strconv.ParseInt(fields[0], 16, 64)
+            end, _ := strconv.ParseInt(fields[1], 16, 64)
+            info := mapInfo{start: start, end: end}
+            res = append(res, info)
+        }
+    }
+    if err := scanner.Err(); err != nil {
+        return nil, err
+    }
+
+    return res, nil
+}
+
+func MemoryGrep(pid uint, str []byte) (bool, error) {
+    maps, err := mappedAdresses(pid)
+    path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem") 
     f, err := os.Open(path)
     if err != nil {
         return false, err
     }
     defer f.Close()
 
-    scanner := bufio.NewScanner(f)
-    for scanner.Scan() {
-        line := scanner.Text()
-
-        // Just keep the last part of the mapped filename
-        // TODO(mvanotti): Probably now that we are using regexp,
-        // we may want to do the regexp over the whole filename.
-        fields := strings.Split(line, "/")
-        if len(fields) <= 1 {
-            continue
-        }
-        library := fields[len(fields)-1]
-
-        if r.MatchString(library) {
-            return true, nil
+    buf := make([]byte, len(str))
+    for _, info := range maps{
+        for pos := info.start; pos < info.end; pos++ {
+            f.ReadAt(buf , pos)
+            if areEqual(str, buf){
+                return true, nil
+            }
         }
     }
-
-    if err := scanner.Err(); err != nil {
-        return false, err
-    }
-
     return false, nil
 }
 
-// FindProcWithLib returns a list of process ids that have the given library loaded in memory.
-// It works looking at all the pids listed in /proc folder, and for each of them, checking its maps file.
-func FindProcWithLib(r *regexp.Regexp) ([]uint, error) {
-    files, _ := ioutil.ReadDir("/proc/")
-    res := make([]uint, 0)
-
-    for _, f := range files {
-        pid, err := strconv.Atoi(f.Name())
-        if err != nil {
-            continue
-        }
-
-        if has, err := HasLibrary(uint(pid), r); err != nil {
-            //TODO(mvanotti): How should we report errors for multiple files? maybe a map[filepath]error ?
-            log.Println(err)
-            continue
-        } else if has {
-            res = append(res, uint(pid))
+func areEqual(s1 []byte, s2 []byte) bool {
+    for index, _ := range s1{
+        if s1[index] != s2[index]{
+            return false
         }
     }
-
-    return res, nil
+    return true
 }
-*/
+
+func main(){
+    pid := uint(12981)
+    str := []byte{0}
+    maps, _ := mappedAdresses(pid)
+    for _, info := range maps{
+        fmt.Printf("%x - %x \n", info.start, info.end)
+    }
+    res, _ := MemoryGrep(pid, str)
+    if res {
+        fmt.Println("encontrado")
+    }
+}
