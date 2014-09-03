@@ -1,3 +1,9 @@
+// This program lists the memory regions of a pid (right now it is hardcoded).
+// Basically it calls OpenProcess and then calls VirtualQueryEx to iterate 
+// over all memory regions. VirtualQueryEx takes an address and gives you the
+// next region from that address and its size.
+//
+// The idea is to call ReadProcessMemory in each of these regions to search of a specific string. (TBD)
 #include <windows.h>
 #include <Processthreadsapi.h>
 #include <stdlib.h>
