@@ -15,6 +15,83 @@ void printInfo(MEMORY_BASIC_INFORMATION info) {
             info.State, info.Protect, info.Type);
 }
 
+typedef struct t_MemoryInformation {
+    DWORD error;
+    MEMORY_BASIC_INFORMATION *info;
+    DWORD length;
+    HANDLE hndl;
+} MemoryInformation;
+
+MemoryInformation *getMemoryInformation(DWORD pid) {
+    MemoryInformation *res = calloc(1, sizeof *res);
+
+    HANDLE hndl = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+            FALSE,
+            pid);
+
+
+    if (hndl == NULL) {
+        res->error = GetLastError();
+        return res;
+    }
+    res->hndl = hndl;
+
+    int bufSize = 1024;
+    MEMORY_BASIC_INFORMATION *info = calloc(bufSize, sizeof *info);
+    LPCVOID addr = 0x0;
+    int i = 0;
+    while (TRUE) {
+
+        // The entries may not fit in our initial array, that's why we double its size.
+        if (i == bufSize) {
+            bufSize *= 2;
+            realloc(info, bufSize * sizeof *info);
+        }
+
+        SIZE_T r = VirtualQueryEx(hndl,
+                addr,
+                &info[i],
+                sizeof(*info));
+
+        if (r == 0) {
+            DWORD err = GetLastError();
+            if (err == ERROR_INVALID_PARAMETER) { 
+                // This means that the address we are using is invalid, i.e: no more addresses left!
+                break;
+            }
+            res->error = err;
+            free(info);
+            return res;
+        }
+        addr += info[i].RegionSize;
+        i++;
+    }
+
+
+    res->info = info;
+    res->length = i;
+    return res;
+}
+
+void MemoryInformation_Free(MemoryInformation *m) {
+    if (m == NULL) return;
+    if (m->hndl != 0) CloseHandle(m->hndl);
+    free(m->info);
+    free(m);
+}
+
+inline static BOOL isReadable(DWORD protection) {
+    switch (protection) {
+        case PAGE_EXECUTE_READ:
+        case PAGE_EXECUTE_READWRITE:
+        case PAGE_READONLY:
+        case PAGE_READWRITE:
+            return TRUE;
+        default:
+            return FALSE;
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc != 2) {
         printf("Usage: %s <pid>", argv[0]);
@@ -22,37 +99,19 @@ int main(int argc, char **argv) {
     }
 
     DWORD pid = strtol(argv[1], NULL, 10);
-
-    HANDLE hndl = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-            FALSE,
-            pid);
-
-    if (hndl == NULL) {
-        fprintf(stderr, "Error! %d", GetLastError());
+    MemoryInformation *m = getMemoryInformation(pid);
+    if (m->error != 0) {
+        fprintf(stderr, "Error! number: %d", m->error);
         exit(EXIT_FAILURE);
     }
 
-    MEMORY_BASIC_INFORMATION info;
-    LPCVOID addr = 0x0;
-    while (TRUE) {
-        SIZE_T res = VirtualQueryEx(hndl,
-                addr,
-                &info,
-                sizeof(info));
 
-        if (res == 0) {
-            DWORD err = GetLastError();
-            if (err == ERROR_INVALID_PARAMETER) { 
-                // This means that the address we are using is invalid, i.e: no more addresses left!
-                break;
-            }
-            fprintf(stderr, "Error! %d", GetLastError());
-            exit(EXIT_FAILURE);
-        }
-
-        printInfo(info);
-        addr += info.RegionSize;
+    for (int i = 0; i < m->length; i++) {
+        printInfo(m->info[i]);
     }
+    printf("Entries: %d\n", m->length);
 
+
+    MemoryInformation_Free(m);
     return 0;
 }
