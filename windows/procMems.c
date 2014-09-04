@@ -15,8 +15,14 @@ void printInfo(MEMORY_BASIC_INFORMATION info) {
             info.State, info.Protect, info.Type);
 }
 
-int main(void) {
-    DWORD pid = 3308;
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        printf("Usage: %s <pid>", argv[0]);
+        return 0;
+    }
+
+    DWORD pid = strtol(argv[1], NULL, 10);
+
     HANDLE hndl = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
             FALSE,
             pid);
