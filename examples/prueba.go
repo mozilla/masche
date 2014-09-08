@@ -9,7 +9,7 @@ import (
 	"log"
 	"regexp"
 
-	"github.com/mozilla/masche"
+	"github.com/mozilla/masche/listlibs"
 )
 
 var rstr = flag.String("r", "", "library name regexp")
@@ -22,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	procs, err := masche.FindProcWithLib(r)
+	procs, err := listlibs.FindProcWithLib(r)
 	if err != nil {
 		log.Fatal(err)
 	}

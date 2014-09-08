@@ -1,4 +1,4 @@
-package masche
+package listlibs
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package masche
+package listlibs
 
 // #cgo LDFLAGS: -lpsapi
 // #include "list_libs_windows.h"
