@@ -4,25 +4,24 @@
 // next region from that address and its size.
 //
 // The idea is to call ReadProcessMemory in each of these regions to search of a specific string. (TBD)
-#include <windows.h>
-#include <Processthreadsapi.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-void printInfo(MEMORY_BASIC_INFORMATION info) {
+#include "procMems_windows.h"
+
+static void printInfo(MEMORY_BASIC_INFORMATION info);
+
+static void printInfo(MEMORY_BASIC_INFORMATION info) {
     printf("%p %p %d %llu %d %d %d\n", info.BaseAddress, info.AllocationBase,
             info.AllocationProtect, info.RegionSize,
             info.State, info.Protect, info.Type);
 }
 
-typedef struct t_MemoryInformation {
-    DWORD error;
-    MEMORY_BASIC_INFORMATION *info;
-    DWORD length;
-    HANDLE hndl;
-} MemoryInformation;
+BOOL FindInRange(HANDLE hndl, MEMORY_BASIC_INFORMATION m, char buf[], int n) {
+    return TRUE;
+}
 
-MemoryInformation *getMemoryInformation(DWORD pid) {
+MemoryInformation *GetMemoryInformation(DWORD pid) {
     MemoryInformation *res = calloc(1, sizeof *res);
 
     HANDLE hndl = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
@@ -92,6 +91,7 @@ inline static BOOL isReadable(DWORD protection) {
     }
 }
 
+/*
 int main(int argc, char **argv) {
     if (argc != 2) {
         printf("Usage: %s <pid>", argv[0]);
@@ -115,3 +115,4 @@ int main(int argc, char **argv) {
     MemoryInformation_Free(m);
     return 0;
 }
+*/
