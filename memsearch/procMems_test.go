@@ -5,12 +5,12 @@ import (
 	"testing"
 )
 
-var needle string = "Find This!"
+var needle []byte = []byte("Find This!")
 
 func TestFindString(t *testing.T) {
 	pid := uint(os.Getpid())
 
-	res, err := memoryGrep(pid, []byte(needle))
+	res, err := memoryGrep(pid, needle)
 	if err != nil {
 		t.Fatal(err)
 	} else if !res {
