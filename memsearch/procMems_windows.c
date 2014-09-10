@@ -6,6 +6,7 @@
 // The idea is to call ReadProcessMemory in each of these regions to search of a specific string. (TBD)
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "procMems_windows.h"
 
@@ -17,8 +18,37 @@ static void printInfo(MEMORY_BASIC_INFORMATION info) {
             info.State, info.Protect, info.Type);
 }
 
-BOOL FindInRange(HANDLE hndl, MEMORY_BASIC_INFORMATION m, char buf[], int n) {
-    return TRUE;
+BOOL FindInRange(HANDLE hndl, MEMORY_BASIC_INFORMATION m, char needle[], int n) {
+    // Read a buffer of size n * 2, so we can search the whole buffer two times, 
+    // with just one call to readProcessMemory
+    SIZE_T bufSize = n * 2;
+    SIZE_T outn;
+    PVOID addr = m.BaseAddress;
+    char *buf = malloc(sizeof (char) * bufSize);
+    SIZE_T bytesRead = 0;
+    do {
+        if (bytesRead + bufSize >= m.RegionSize) bufSize = m.RegionSize - bytesRead; //TODO: Check Bounds
+
+        BOOL res = ReadProcessMemory(hndl, addr, buf, n * 2, &outn);
+        if (!res) {
+            free(buf);
+            return FALSE;
+        }
+
+        addr += outn;
+        bytesRead += outn;  
+
+        // Search the needle in the haystack (inefficient solution n^2)
+        for (int i = 0; i < outn - n; i++) { // TODO: Check Bounds
+            if (memcmp(buf + i, needle, n) == 0) {
+                free(buf);
+                return TRUE;
+            }
+        }
+    } while (bufSize == 2*n);
+
+    free(buf);
+    return FALSE;
 }
 
 MemoryInformation *GetMemoryInformation(DWORD pid) {
