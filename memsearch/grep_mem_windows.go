@@ -10,7 +10,7 @@ import (
 	"unsafe"
 )
 
-func memoryGrep(pid uint, buf []byte) (bool, error) {
+func MemoryGrep(pid uint, buf []byte) (bool, error) {
 	minfo := C.GetMemoryInformation(C.DWORD(pid))
 	defer C.MemoryInformation_Free(minfo)
 	if minfo.error != 0 {
@@ -23,12 +23,31 @@ func memoryGrep(pid uint, buf []byte) (bool, error) {
 			Len:  int(minfo.length),
 			Cap:  int(minfo.length)}))
 
+	cbuf := C.CString(string(buf))
+	clen := C.int(len(buf))
+
+	results := make(chan bool)
+
 	for _, v := range cinfo {
-		res := C.FindInRange(minfo.hndl, v, C.CString(string(buf)), C.int(len(buf)))
-		if int(res) != 0 {
-			return true, nil
-		}
+		go func(v C.MEMORY_BASIC_INFORMATION) {
+			res := C.FindInRange(minfo.hndl, v, cbuf,clen)
+
+			results <- int(res) != 0
+		}(v)
 	}
 
+	done := 0
+	for {
+	select {
+		case v := <- results:
+			done += 1
+		if v {
+			return true, nil
+		}
+		if done == int(minfo.length) {
+			return false, nil
+		}
+	}
+	}
 	return false, nil
 }
