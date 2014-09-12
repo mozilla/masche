@@ -10,6 +10,17 @@ import (
 	"unsafe"
 )
 
+func PrintMemory(pid uint, addr uint64, size int) error {
+	minfo := C.GetMemoryInformation(C.DWORD(pid))
+	defer C.MemoryInformation_Free(minfo)
+	if minfo.error != 0 {
+		return fmt.Errorf("GetMemoryInformation failed with error %d\n", minfo.error)
+	}
+
+	C.PrintMemory(minfo.hndl, C.PVOID(uintptr(addr)), C.SIZE_T(size))
+	return nil
+}
+
 func MemoryGrep(pid uint, buf []byte) (bool, error) {
 	minfo := C.GetMemoryInformation(C.DWORD(pid))
 	defer C.MemoryInformation_Free(minfo)

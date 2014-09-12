@@ -18,6 +18,22 @@ static void printInfo(MEMORY_BASIC_INFORMATION info) {
             info.State, info.Protect, info.Type);
 }
 
+void PrintMemory(HANDLE hndl, PVOID addr, SIZE_T size) {
+    char buf[size + 1];
+    SIZE_T out;
+    printf("Trying to read %d bytes from addr %p\n", size, addr);
+    BOOL res = ReadProcessMemory(hndl, addr, buf, size, &out);
+    if (!res) {
+        fprintf(stderr, "ReadProcessMemory failed; error: %d", GetLastError());
+        return;
+    }
+
+    for (int i = 0; i < size; i++) {
+        printf("%x", buf[i]);
+    }
+    printf("\n");
+}
+
 BOOL FindInRange(HANDLE hndl, MEMORY_BASIC_INFORMATION m, char needle[], int n) {
     // Read a buffer of size n * 2, so we can search the whole buffer two times, 
     // with just one call to readProcessMemory
@@ -41,6 +57,7 @@ BOOL FindInRange(HANDLE hndl, MEMORY_BASIC_INFORMATION m, char needle[], int n) 
         // Search the needle in the haystack (inefficient solution n^2)
         for (int i = 0; i < outn - n; i++) { // TODO: Check Bounds
             if (memcmp(buf + i, needle, n) == 0) {
+                printf("%p\n", addr + i);
                 free(buf);
                 return TRUE;
             }
