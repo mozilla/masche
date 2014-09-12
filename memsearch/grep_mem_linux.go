@@ -16,6 +16,7 @@ type mapInfo struct {
 
 // mappedAddresses gives the stack and heap addresses for a given pid
 func mappedAdresses(pid uint) ([]mapInfo, error) {
+
 	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
 	f, err := os.Open(path)
 	if err != nil {
@@ -24,8 +25,13 @@ func mappedAdresses(pid uint) ([]mapInfo, error) {
 	defer f.Close()
 
 	res := make([]mapInfo, 0)
-
 	scanner := bufio.NewScanner(f)
+	name, err := nameByPID(pid)
+	if err != nil {
+		return nil, err
+	}
+	goals := []string{"[heap]", "[stack]", name} // we want to look into the binary memory, its heap and its stack
+
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -33,7 +39,7 @@ func mappedAdresses(pid uint) ([]mapInfo, error) {
 		if len(items) <= 1 {
 			continue
 		}
-		if items[len(items)-1] == "[heap]" || items[len(items)-1] == "[stack]" {
+		if stringInSlice(items[len(items)-1], goals) {
 			fields := strings.Split(items[0], "-")
 			start, _ := strconv.ParseInt(fields[0], 16, 64)
 			end, _ := strconv.ParseInt(fields[1], 16, 64)
@@ -46,6 +52,15 @@ func mappedAdresses(pid uint) ([]mapInfo, error) {
 	}
 
 	return res, nil
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if a == b {
+			return true
+		}
+	}
+	return false
 }
 
 func MemoryGrep(pid uint, str []byte) (bool, error) {
@@ -65,6 +80,28 @@ func MemoryGrep(pid uint, str []byte) (bool, error) {
 		}
 		res = res || found
 	}
+	return res, nil
+}
+
+func nameByPID(pid uint) (string, error) {
+	// inside /proc/[pid]/stat is the name of the binary between parentheses as second word
+	// should be pathByPID (because we need to compare with the full path)
+	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "stat")
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	scanner.Split(bufio.ScanWords)
+
+	scanner.Scan() // discard first word
+	scanner.Scan()
+
+	res := scanner.Text()
+	res = strings.TrimPrefix(res, "(")
+	res = strings.TrimSuffix(res, ")")
+
 	return res, nil
 }
 
@@ -96,6 +133,9 @@ func main() {
 	var pid uint
 	var str []byte
 	fmt.Scanf("%d", &pid)
+	name, _ := nameByPID(pid)
+	fmt.Println(name)
+
 	fmt.Scanf("%s", &str)
 	res, err := MemoryGrep(pid, str)
 	if err != nil {
