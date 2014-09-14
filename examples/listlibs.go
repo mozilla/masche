@@ -22,9 +22,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	procs, err := listlibs.FindProcWithLib(r)
+	procs, softerrs, err := listlibs.FindProcWithLib(r)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	for _, e := range softerrs {
+		fmt.Println(e.Error())
 	}
 
 	for _, p := range procs {

@@ -12,6 +12,7 @@ func TestFindProcWithLib(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ls, err := FindProcWithLib(r)
+	ls, softerrs, err := FindProcWithLib(r)
+	fmt.Println(softerrs)
 	fmt.Println(ls)
 }
