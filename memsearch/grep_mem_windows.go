@@ -10,6 +10,7 @@ import (
 	"unsafe"
 )
 
+// PrintMemory prints into stdout size bytes from a process memory, starting from address addr.
 func PrintMemory(pid uint, addr uint64, size int) error {
 	minfo := C.GetMemoryInformation(C.DWORD(pid))
 	defer C.MemoryInformation_Free(minfo)
