@@ -28,7 +28,7 @@ enum mem_search_status {
 };
 
 /**
- * Searches a sequense of bytes in a mach_region, returing true if found.
+ * Searches a sequence of bytes in a mach_region, returing true if found.
  * FIXME(alcuadrado): This should also return the address where found.
  **/
 bool search_bytes_in_region(task_t task, mach_vm_address_t region_start,
@@ -59,7 +59,7 @@ bool search_bytes_in_region(task_t task, mach_vm_address_t region_start,
  * starting at initial_address.
  *
  * This function returns a mem_search_status indicating if the bytes where
- * found or not, or if an error ocurred. If the sequense of bytes was found,
+ * found or not, or if an error ocurred. If the sequence of bytes was found,
  * its initial address (in the process address space) will be available at
  * *found_at.
  **/
@@ -117,10 +117,10 @@ enum mem_search_status memory_search_from_address(int pid, char *bytes,
     return MEM_SEARCH_STATUS_NOT_FOUND;
 }
 
-void try_to_find_and_print(int pid, char *bytes) {
+void try_to_find_and_print(int pid, char *bytes, size_t bytes_size) {
     mach_vm_address_t found_at;
-    enum mem_search_status ret = memory_search_from_address(pid, bytes, 8, 0,
-        &found_at);
+    enum mem_search_status ret = memory_search_from_address(pid, bytes,
+        bytes_size, 0, &found_at);
 
     switch (ret) {
         case MEM_SEARCH_STATUS_FOUND:
@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
 
     int pid = atoi(argv[1]);
     char deadbeef[] = {0xd, 0xe, 0xa, 0xd, 0xb, 0xe, 0xe, 0xf};
-    try_to_find_and_print(pid, deadbeef);
+    try_to_find_and_print(pid, deadbeef, sizeof(deadbeef));
 
     return 0;
 }
