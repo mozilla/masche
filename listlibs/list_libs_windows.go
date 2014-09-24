@@ -1,5 +1,7 @@
 package listlibs
 
+// #cgo CFLAGS: -std=c99
+// #cgo CFLAGS: -DPSAPI_VERSION=1
 // #cgo LDFLAGS: -lpsapi
 // #include "list_libs_windows.h"
 import "C"
@@ -11,6 +13,11 @@ import (
 	"sort"
 	"unsafe"
 )
+
+type ProcessInfo struct {
+	Filename string
+	Pid      uint
+}
 
 type ModuleInfo struct {
 	filename   string
@@ -29,6 +36,65 @@ func (s byPid) Swap(i, j int) {
 }
 func (s byPid) Less(i, j int) bool {
 	return s[i] < s[j]
+}
+
+func GrepProcesses(r *regexp.Regexp) ([]ProcessInfo, []Softerror, error) {
+	procs, softerrs, err := GetAllProcesses()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	matchs := make([]ProcessInfo, 0)
+
+	for _, p := range procs {
+		if r.MatchString(p.Filename) {
+			matchs = append(matchs, p)
+		}
+	}
+
+	return matchs, softerrs, nil
+}
+
+// GetAllProcesses returns a slice with information about all the running processes, alongside with the
+// processes that couldn't be read as Softerrors.
+func GetAllProcesses() ([]ProcessInfo, []Softerror, error) {
+	//TODO(mvanotti): Is it better to return a map[pid]Pinfo and map[pid]error for princes info and softerrors?
+	r := C.getAllProcesses()
+	defer C.EnumProcessesFullResponse_Free(r)
+	if r.error != 0 {
+		return nil, nil, fmt.Errorf("getAllProcesses failed with error: %d", r.error)
+	}
+
+	pinfo := make([]ProcessInfo, 0)
+	softerrs := make([]Softerror, 0)
+
+	// We use this to access C arrays without doing manual pointer arithmetic.
+	cpinfo := *(*[]C.ProcessInfo)(unsafe.Pointer(
+		&reflect.SliceHeader{
+			Data: uintptr(unsafe.Pointer(r.processes)),
+			Len:  int(r.length),
+			Cap:  int(r.length)}))
+
+	for i, _ := range cpinfo {
+		if cpinfo[i].error != 0 {
+			err := Softerror{
+				Pid: uint(cpinfo[i].pid),
+				Err: fmt.Errorf("Error number: %d", cpinfo[i].error),
+			}
+
+			softerrs = append(softerrs, Softerror{uint(cpinfo[i].pid), err})
+			continue
+		}
+
+		info := ProcessInfo{
+			Pid:      uint(cpinfo[i].pid),
+			Filename: C.GoString(cpinfo[i].filename),
+		}
+
+		pinfo = append(pinfo, info)
+	}
+
+	return pinfo, softerrs, nil
 }
 
 func listProcesses() ([]uint, error) {
