@@ -1,5 +1,5 @@
 // This program lists the memory regions of a pid (right now it is hardcoded).
-// Basically it calls OpenProcess and then calls VirtualQueryEx to iterate 
+// Basically it calls OpenProcess and then calls VirtualQueryEx to iterate
 // over all memory regions. VirtualQueryEx takes an address and gives you the
 // next region from that address and its size.
 //
@@ -14,8 +14,8 @@ static void printInfo(MEMORY_BASIC_INFORMATION info);
 
 static void printInfo(MEMORY_BASIC_INFORMATION info) {
     printf("%p %p %d %llu %d %d %d\n", info.BaseAddress, info.AllocationBase,
-            info.AllocationProtect, info.RegionSize,
-            info.State, info.Protect, info.Type);
+           info.AllocationProtect, info.RegionSize,
+           info.State, info.Protect, info.Type);
 }
 
 void PrintMemory(HANDLE hndl, PVOID addr, SIZE_T size) {
@@ -29,13 +29,14 @@ void PrintMemory(HANDLE hndl, PVOID addr, SIZE_T size) {
     }
 
     for (int i = 0; i < size; i++) {
-        printf("%x", buf[i]);
+        printf("%x ", buf[i]);
     }
     printf("\n");
 }
 
-BOOL FindInRange(HANDLE hndl, MEMORY_BASIC_INFORMATION m, char needle[], int n) {
-    // Read a buffer of size n * 2, so we can search the whole buffer two times, 
+BOOL FindInRange(HANDLE hndl, MEMORY_BASIC_INFORMATION m, char needle[],
+                 int n) {
+    // Read a buffer of size n * 2, so we can search the whole buffer two times,
     // with just one call to readProcessMemory
     SIZE_T bufSize = n * 2;
     SIZE_T outn;
@@ -43,37 +44,37 @@ BOOL FindInRange(HANDLE hndl, MEMORY_BASIC_INFORMATION m, char needle[], int n) 
     char *buf = malloc(sizeof (char) * bufSize);
     SIZE_T bytesRead = 0;
     do {
-        if (bytesRead + bufSize >= m.RegionSize) bufSize = m.RegionSize - bytesRead; //TODO: Check Bounds
-
+        if (bytesRead + bufSize >= m.RegionSize) bufSize = m.RegionSize -
+                    bytesRead; //TODO: Check Bounds
         BOOL res = ReadProcessMemory(hndl, addr, buf, n * 2, &outn);
         if (!res) {
             free(buf);
             return FALSE;
         }
 
-        addr += outn;
-        bytesRead += outn;  
-
         // Search the needle in the haystack (inefficient solution n^2)
         for (int i = 0; i < outn - n; i++) { // TODO: Check Bounds
             if (memcmp(buf + i, needle, n) == 0) {
-                printf("%p\n", addr + i);
+                printf("Found needle at address: %p\n", addr + i);
                 free(buf);
                 return TRUE;
             }
         }
-    } while (bufSize == 2*n);
+
+        addr += outn;
+        bytesRead += outn;
+    } while (bufSize == 2 * n);
 
     free(buf);
     return FALSE;
 }
 
 MemoryInformation *GetMemoryInformation(DWORD pid) {
-    MemoryInformation *res = calloc(1, sizeof *res);
+    MemoryInformation *res = calloc(1, sizeof * res);
 
     HANDLE hndl = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-            FALSE,
-            pid);
+                              FALSE,
+                              pid);
 
 
     if (hndl == NULL) {
@@ -83,7 +84,7 @@ MemoryInformation *GetMemoryInformation(DWORD pid) {
     res->hndl = hndl;
 
     int bufSize = 1024;
-    MEMORY_BASIC_INFORMATION *info = calloc(bufSize, sizeof *info);
+    MEMORY_BASIC_INFORMATION *info = calloc(bufSize, sizeof * info);
     LPCVOID addr = 0x0;
     int i = 0;
     while (TRUE) {
@@ -91,17 +92,17 @@ MemoryInformation *GetMemoryInformation(DWORD pid) {
         // The entries may not fit in our initial array, that's why we double its size.
         if (i == bufSize) {
             bufSize *= 2;
-            realloc(info, bufSize * sizeof *info);
+            realloc(info, bufSize * sizeof * info);
         }
 
         SIZE_T r = VirtualQueryEx(hndl,
-                addr,
-                &info[i],
-                sizeof(*info));
+                                  addr,
+                                  &info[i],
+                                  sizeof(*info));
 
         if (r == 0) {
             DWORD err = GetLastError();
-            if (err == ERROR_INVALID_PARAMETER) { 
+            if (err == ERROR_INVALID_PARAMETER) {
                 // This means that the address we are using is invalid, i.e: no more addresses left!
                 break;
             }
@@ -128,13 +129,13 @@ void MemoryInformation_Free(MemoryInformation *m) {
 
 inline static BOOL isReadable(DWORD protection) {
     switch (protection) {
-        case PAGE_EXECUTE_READ:
-        case PAGE_EXECUTE_READWRITE:
-        case PAGE_READONLY:
-        case PAGE_READWRITE:
-            return TRUE;
-        default:
-            return FALSE;
+    case PAGE_EXECUTE_READ:
+    case PAGE_EXECUTE_READWRITE:
+    case PAGE_READONLY:
+    case PAGE_READWRITE:
+        return TRUE;
+    default:
+        return FALSE;
     }
 }
 

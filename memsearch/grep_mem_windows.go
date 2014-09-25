@@ -42,7 +42,7 @@ func MemoryGrep(pid uint, buf []byte) (bool, error) {
 
 	for _, v := range cinfo {
 		go func(v C.MEMORY_BASIC_INFORMATION) {
-			res := C.FindInRange(minfo.hndl, v, cbuf,clen)
+			res := C.FindInRange(minfo.hndl, v, cbuf, clen)
 
 			results <- int(res) != 0
 		}(v)
@@ -50,16 +50,16 @@ func MemoryGrep(pid uint, buf []byte) (bool, error) {
 
 	done := 0
 	for {
-	select {
-		case v := <- results:
+		select {
+		case v := <-results:
 			done += 1
-		if v {
-			return true, nil
+			if v {
+				return true, nil
+			}
+			if done == int(minfo.length) {
+				return false, nil
+			}
 		}
-		if done == int(minfo.length) {
-			return false, nil
-		}
-	}
 	}
 	return false, nil
 }
