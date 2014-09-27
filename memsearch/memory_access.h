@@ -24,7 +24,7 @@ typedef struct {
  *
  * fatal_error may point to an error_t that made the operation fail or be NULL.
  * soft_errors may be an array of non-fatal errors or be NULL.
- * soft_errors_count is the number errors in soft_errors (0 for no array).
+ * soft_errors_count is the number errors in soft_errors (if nor array, a 0).
  * soft_errors_capacity is the capacity of soft_errors (0 for no array).
  **/
 typedef struct {
