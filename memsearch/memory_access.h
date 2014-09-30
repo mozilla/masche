@@ -3,6 +3,7 @@
 
 //TODO: File level documentations.
 //TODO: Define the different process_handle_t
+
 #define pid_t uint_t
 
 /**
@@ -49,7 +50,7 @@ typedef struct {
  * error.
  **/
 typedef struct {
-    response_errors_t errors;
+    error_t error;
     process_handle_t process_handle;
 } process_handle_response_t;
 
