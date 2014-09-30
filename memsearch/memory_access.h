@@ -3,7 +3,6 @@
 
 //TODO: File level documentations.
 //TODO: Define the different process_handle_t
-
 #define pid_t uint_t
 
 /**
@@ -25,13 +24,11 @@ typedef struct {
  * fatal_error may point to an error_t that made the operation fail or be NULL.
  * soft_errors may be an array of non-fatal errors or be NULL.
  * soft_errors_count is the number errors in soft_errors (if nor array, a 0).
- * soft_errors_capacity is the capacity of soft_errors (0 for no array).
  **/
 typedef struct {
     error_t *fatal_error;
     error_t *soft_errors;
     size_t soft_errors_count;
-    size_t soft_errors_capacity;
 } response_errors_t;
 
 /**
@@ -64,6 +61,6 @@ response_errors_t *close_process_handle(process_handle_t *process_handle);
 
 //TODO: Add doc.
 memory_region_response_t get_next_readable_memory_region(
-        process_handle_t handle, void *start_address);
+    process_handle_t handle, void *start_address);
 
 #endif /* __MEMORY_ACCESS__ */
