@@ -4,6 +4,19 @@
 //TODO: File level documentations.
 //TODO: Define the different process_handle_t
 
+#ifdef _WIN32
+#include <windows.h>
+/**
+ * Windows specific process handle.
+ * handle represent the handle to an process object
+ * pid is the process id.
+ **/
+typedef struct {
+    HANDLE handle;
+    DWORD pid;
+} process_handle_t;
+#endif
+
 #define pid_t uint_t
 
 /**
@@ -16,7 +29,6 @@ typedef struct {
     int error_number;
     char *description;
 } error_t;
-
 
 /**
  * This struct represents the error releated parts of a response to a function
@@ -31,6 +43,9 @@ typedef struct {
     error_t *soft_errors;
     size_t soft_errors_count;
 } response_errors_t;
+
+// response_errors_free releases the resources used by the given errors.
+void response_errors_free(response_errors_t *errors);
 
 /**
  * This struct represents a region of readable contiguos memory of a process.
@@ -50,18 +65,81 @@ typedef struct {
  * error.
  **/
 typedef struct {
-    error_t error;
+    response_errors_t *errors;
     process_handle_t process_handle;
 } process_handle_response_t;
 
-//TODO: Add doc.
-process_handle_response_t *open_process_handle(pid_t pid);
+/**
+ * open_process_handle creates a handle for a given process based on its pid.
+ * this handle is used for interacting with all the other functions in this
+ * library.
+ * This function returns a process_handle_response_t *, which contains
+ * the error in case there was an error (NULL otherwise), and a pointer to
+ * a process_handle, which may be invalid if the error is non-NULL.
+ * In order to release all the resources allocated by this function,
+ * if there's an error, the caller must call response_errors_free with
+ * the errors, otherwise, the caller must call close_process_handle with
+ * the process_handle.
+ **/
+process_handle_response_t open_process_handle(pid_t pid);
 
-//TODO: Add doc.
-response_errors_t *close_process_handle(process_handle_t *process_handle);
+/**
+ * close_process_handle closes a specific process handle.
+ * The given handle should not be used anymore after calling this function.
+ * An error will be returned upon failure, or NULL if the function succeeded.
+ * Note that some errors might mean that the resources have already been freed
+ * (for example, if the process dies before calling this function).
+ **/
+error_t *close_process_handle(process_handle_t process_handle);
 
-//TODO: Add doc.
+/**
+ * Response for a memory_region request (get_next_readable_memory_region
+ * for example), with the region information and any possible error.
+ */
+typedef struct {
+    response_errors_t *errors;
+    memory_region_t region;
+} memory_region_response_t;
+
+// memory_region_response_free releases the resources used by the given region.
+void memory_region_response_free(memory_region_response *region);
+
+/**
+ * get_next_readable_memory_region returns a memory_region that is readable
+ * and starts at an address greater or equal than start_address.
+ * If no error ocurred, the error field will be NULL.
+ * The response errors should be freed using response_errors_free.
+ **/
 memory_region_response_t get_next_readable_memory_region(
     process_handle_t handle, void *start_address);
+
+// TODO: Add doc.
+typedef struct {
+    response_errors_t *errors;
+    void *address;
+} memory_search_response_t;
+
+/**
+ * find_next_occurrence searches the memory starting at address start_address
+ * for the n-bytes given in buf.
+ * If the errors are non-NULL, they should be freed using response_errors_free.
+ **/
+memory_search_response_t find_next_occurrence(
+    process_handle_t handle, void *start_address, char buf[], int n);
+
+// TODO: Add doc.
+typedef struct {
+    response_errors_t *errors;
+    int size;
+    char *data;
+} memory_read_response_t
+
+// TODO: Add doc.
+memory_read_response_t *read_memory(process_handle_t handle,
+                                    void *start_address, int size);
+
+// TODO: Add doc.
+void memory_read_response_free(memory_read_response_t *mem);
+
 
 #endif /* __MEMORY_ACCESS__ */
