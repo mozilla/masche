@@ -12,6 +12,8 @@
  *      5. Close the process.
  **/
 
+#include <stdbool.h>
+
 #ifdef _WIN32
 
 #include <windows.h>
@@ -29,7 +31,7 @@ typedef struct {
 
 #endif /* _WIN32 */
 
-#ifdef TARGET_OS_MAC
+#ifdef __MACH__
 
 #include <mach/mach.h>
 
@@ -38,7 +40,7 @@ typedef struct {
  **/
 typedef task_t process_handle_t;
 
-#endif /* TARGET_OS_MAC */
+#endif /* __MACH__ */
 
 /**
  * Process ID type.
