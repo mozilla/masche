@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include <mach/mach_vm.h>
 
@@ -11,7 +12,7 @@
 static error_t *error_create_from_kern_return_t(kern_return_t error_number) {
     error_t *error = malloc(sizeof(*error));
     error->error_number = (int) error_number;
-    error->description = mach_error_string(error_number);
+    error->description = strdup(mach_error_string(error_number));
     return error;
 }
 
@@ -23,7 +24,7 @@ static void error_free(error_t *error) {
         return;
     }
 
-    //as descriptions are staticly allocated we just need to free the error_t
+    free(error->description);
     free(error);
 }
 
@@ -40,10 +41,10 @@ void response_free(response_t *response) {
     }
 
     error_free(response->fatal_error);
-
-    //as error descriptions are staticaly allocated we can free the entire
-    //array of errors at once.
     if (response->soft_errors != NULL) {
+        for (size_t i = 0; i < response->soft_errors_count; i++) {
+            free(response->soft_errors[i].description);
+        }
         free(response->soft_errors);
     }
 
@@ -63,9 +64,11 @@ static void response_set_fatal_error(response_t *response,
 
 /**
  * Adds a soft error to a response.
+ *
+ * description is a heap-allocated null-terminated string.
  **/
-static void response_add_soft_error(response_t *response,
-        kern_return_t error_number) {
+static void response_add_soft_error(response_t *response, int error_number,
+        char *description) {
 
 #define SOFT_ERRORS_INITIAL_CAPACITY 2
 #define SOFT_ERRORS_REALLOCATION_FACTOR 2
@@ -86,7 +89,7 @@ static void response_add_soft_error(response_t *response,
     response->soft_errors[response->soft_errors_count].error_number =
         error_number;
     response->soft_errors[response->soft_errors_count].description =
-        mach_error_string(error_number);
+        description;
     response->soft_errors_count++;
 }
 
@@ -99,7 +102,8 @@ response_t *open_process_handle(pid_t pid, process_handle_t *handle) {
     if (kret != KERN_SUCCESS) {
         response_set_fatal_error(response, kret);
     } else {
-        *handle = task;
+        handle->task = task;
+        handle->pid = pid;
     }
 
     return response;
@@ -109,7 +113,7 @@ response_t *close_process_handle(process_handle_t process_handle) {
     kern_return_t kret;
     response_t *response = response_create();
 
-    kret = mach_port_deallocate(mach_task_self(), process_handle);
+    kret = mach_port_deallocate(mach_task_self(), process_handle.task);
     if (kret != KERN_SUCCESS) {
         response_set_fatal_error(response, kret);
     }
@@ -131,7 +135,7 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
 
     for (;;) {
         info_count = VM_REGION_SUBMAP_INFO_COUNT_64;
-        kret = mach_vm_region_recurse(handle,
+        kret = mach_vm_region_recurse(handle.task,
             &addr, &size, &depth,
             (vm_region_recurse_info_t)&info,
             &info_count);
@@ -151,7 +155,11 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
         }
 
         if ((info.protection & VM_PROT_READ) == VM_PROT_READ) {
-            //TODO(alcuadrado): Add a soft error here.
+            char **descriptionptr = NULL;
+            asprintf(descriptionptr,
+                    "Memory unreadable in process %d: %llx-%llx", handle.pid,
+                    addr, addr + size - 1);
+            response_add_soft_error(response, -1, *descriptionptr);
 
             if (*region_available) {
                 return response;
@@ -177,7 +185,7 @@ response_t *copy_process_memory(process_handle_t handle, void *start_address,
     response_t *response = response_create();
 
     mach_vm_size_t read;
-    kern_return_t kret = mach_vm_read_overwrite(handle,
+    kern_return_t kret = mach_vm_read_overwrite(handle.task,
             (mach_vm_address_t) start_address,
             bytes_to_read, (mach_vm_address_t) buffer, &read);
 

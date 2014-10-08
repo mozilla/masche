@@ -38,7 +38,10 @@ typedef struct {
 /**
  * Mac specific process handle.
  **/
-typedef task_t process_handle_t;
+typedef struct {
+    task_t task;
+    pid_t pid;
+} process_handle_t;
 
 #endif /* __MACH__ */
 
