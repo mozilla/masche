@@ -6,9 +6,9 @@
 #include "memory_access.h"
 
 /**
- * Creates a new error_t for a given error number.
+ * Creates a new error_t for a given kern_return_t.
  **/
-static error_t *error_create(kern_return_t error_number) {
+static error_t *error_create_from_kern_return_t(kern_return_t error_number) {
     error_t *error = malloc(sizeof(*error));
     error->error_number = (int) error_number;
     error->description = mach_error_string(error_number);
@@ -58,7 +58,7 @@ void response_free(response_t *response) {
 static void response_set_fatal_error(response_t *response,
         kern_return_t error_number) {
     assert(response->fatal_error == NULL);
-    response->fatal_error = error_create(error_number);
+    response->fatal_error = error_create_from_kern_return_t(error_number);
 }
 
 /**
