@@ -176,9 +176,17 @@ response_t *copy_process_memory(process_handle_t handle, void *start_address,
         size_t bytes_to_read, void *buffer, size_t *bytes_read) {
     response_t *response = response_create();
 
+    mach_vm_size_t read;
+    kern_return_t kret = mach_vm_read_overwrite(handle,
+            (mach_vm_address_t) start_address,
+            bytes_to_read, (mach_vm_address_t) buffer, &read);
 
-    //TODO(alcuadrado): Implement this function.
+    if (kret != KERN_SUCCESS) {
+        response_set_fatal_error(response, kret);
+        return response;
+    }
 
+    *bytes_read = read;
     return response;
 }
 
