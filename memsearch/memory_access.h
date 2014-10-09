@@ -13,6 +13,7 @@
  **/
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef _WIN32
 
@@ -24,10 +25,7 @@
  * handle represent the handle to an process object
  * pid is the process id.
  **/
-typedef struct {
-    HANDLE handle;
-    DWORD pid;
-} process_handle_t;
+typedef HANDLE process_handle_t;
 
 #endif /* _WIN32 */
 
@@ -48,7 +46,7 @@ typedef struct {
 /**
  * Process ID type.
  **/
-typedef pid_t uint_t;
+typedef uint32_t pid_tt;
 
 /**
  * This struct represents an error.
@@ -102,7 +100,7 @@ void response_free(response_t *errors);
  * If a fatal error ocurres the handle must not be used, but it must be closed
  * anyway to ensure that all resources are freed.
  **/
-response_t *open_process_handle(pid_t pid, process_handle_t *handle);
+response_t *open_process_handle(pid_tt pid, process_handle_t *handle);
 
 /**
  * Closes a specific process handle, freen all its resources.
@@ -132,7 +130,7 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
  * It's caller responsibility to provide a big enough buffer.
  **/
 response_t *copy_process_memory(process_handle_t handle, void *start_address,
-        size_t bytes_to_read, void *buffer, size_t *bytes_read);
+                                size_t bytes_to_read, void *buffer, size_t *bytes_read);
 
 #endif /* __MEMORY_ACCESS__ */
 
