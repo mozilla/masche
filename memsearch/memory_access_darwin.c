@@ -174,7 +174,15 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
                 memory_region->start_address = (void *) addr;
                 memory_region->length = size;
             } else {
-                memory_region->length += size;
+                if (memory_region->start_address + memory_region->length <
+                        addr) {
+
+                    return response;
+                }
+
+                mach_vm_size_t overlaped_bytes = memory_region->start_address +
+                    memory_region->length - addr;
+                memory_region->length += size - overlaped_bytes;
             }
         }
 
