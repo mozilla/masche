@@ -61,5 +61,4 @@ func MemoryGrep(pid uint, buf []byte) (bool, error) {
 			}
 		}
 	}
-	return false, nil
 }

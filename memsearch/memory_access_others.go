@@ -1,6 +1,6 @@
-package memsearch
-
 // +build windows darwin
+
+package memsearch
 
 // #include "memory_access.h"
 // #cgo CFLAGS: -std=c99
@@ -74,12 +74,10 @@ func (p process) CopyMemory(address uintptr, buffer []byte) error {
 		&bytesRead,
 	)
 	defer C.response_free(resp)
-
 	if resp.fatal_error != nil {
 		return fmt.Errorf("copy_process_memory failed with error %d: %s",
 			resp.fatal_error.error_number,
 			C.GoString(resp.fatal_error.description))
 	}
-
 	return nil
 }
