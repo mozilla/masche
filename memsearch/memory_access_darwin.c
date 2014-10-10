@@ -93,7 +93,7 @@ static void response_add_soft_error(response_t *response, int error_number,
     response->soft_errors_count++;
 }
 
-response_t *open_process_handle(pid_t pid, process_handle_t *handle) {
+response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
     task_t task;
     kern_return_t kret;
     response_t *response = response_create();
