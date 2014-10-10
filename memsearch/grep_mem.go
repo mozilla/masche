@@ -94,7 +94,7 @@ func Find(p Process, needle []byte) (addr uintptr, found bool, errs []error) {
 	return addr, found, errs
 }
 
-// FindNext finds for the first occurrence of needle in the memory of Proess ph after the given address.
+// FindNext finds for the first occurrence of needle in the memory of Process ph after the given address.
 func FindNext(ph Process, address uintptr, needle []byte) (uintptr, bool, error) {
 	region, err := ph.NextReadableMemoryRegion(address)
 	if err != nil {

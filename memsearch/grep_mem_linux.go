@@ -33,7 +33,7 @@ func readAtMemManager(memManagerData, buf []byte, pos uint){
 }
 
 // mappedAddresses gives the stack and heap addresses for a given pid
-func mappedAdresses(pid uint) ([]mapInfo, error) {
+func mappedAddresses(pid uint) ([]mapInfo, error) {
 
 	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
 	f, err := os.Open(path)
@@ -82,7 +82,7 @@ func stringInSlice(a string, list []string) bool {
 }
 
 func MemoryGrep(pid uint, str []byte) (bool, error) {
-	maps, err := mappedAdresses(pid)
+	maps, err := mappedAddresses(pid)
 	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
 	f, err := os.Open(path)
 	if err != nil {
