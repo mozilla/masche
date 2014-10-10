@@ -26,12 +26,17 @@ func TestSearchInOtherProcess(t *testing.T) {
 	pid := uint(cmd.Process.Pid)
 	fmt.Println("PID: ", pid)
 	fmt.Println("My PID: ", os.Getpid())
+	p, err := OpenProcess(pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
 
 	for _, buf := range buffersToFind {
-		res, err := MemoryGrep(pid, buf)
+		_, found, err := FindNext(p, 0, buf)
 		if err != nil {
 			t.Fatal(err)
-		} else if !res {
+		} else if !found {
 			t.Fatal("memoryGrep failed, the following buffer should be found", buf)
 		}
 	}
@@ -41,10 +46,16 @@ func TestSearchInOtherProcess(t *testing.T) {
 func testFindString(t *testing.T) {
 	pid := uint(os.Getpid())
 
-	res, err := MemoryGrep(pid, needle)
+	p, err := OpenProcess(pid)
 	if err != nil {
 		t.Fatal(err)
-	} else if !res {
+	}
+	defer p.Close()
+
+	_, found, err := FindNext(p, 0, needle)
+	if err != nil {
+		t.Fatal(err)
+	} else if !found {
 		t.Fatalf("memoryGrep failed, searching for %s, should be True", needle)
 	}
 }

@@ -93,7 +93,7 @@ static void response_add_soft_error(response_t *response, int error_number,
     response->soft_errors_count++;
 }
 
-response_t *open_process_handle(pid_t pid, process_handle_t *handle) {
+response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
     task_t task;
     kern_return_t kret;
     response_t *response = response_create();
@@ -154,11 +154,15 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
             continue;
         }
 
-        if ((info.protection & VM_PROT_READ) == VM_PROT_READ) {
+        if ((info.protection & VM_PROT_READ) != VM_PROT_READ) {
             char **descriptionptr = NULL;
-            asprintf(descriptionptr,
-                    "Memory unreadable in process %d: %llx-%llx", handle.pid,
-                    addr, addr + size - 1);
+            asprintf(
+                descriptionptr,
+                "Memory unreadable in process %d: %llx-%llx",
+                handle.pid,
+                addr,
+                addr + size - 1
+            );
             response_add_soft_error(response, -1, *descriptionptr);
 
             if (*region_available) {
@@ -170,7 +174,16 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
                 memory_region->start_address = (void *) addr;
                 memory_region->length = size;
             } else {
-                memory_region->length += size;
+                mach_vm_address_t limit_address =
+                    (mach_vm_address_t) memory_region->start_address +
+                    memory_region->length;
+
+                if (limit_address < addr) {
+                    return response;
+                }
+
+                mach_vm_size_t overlaped_bytes = limit_address - addr;
+                memory_region->length += size - overlaped_bytes;
             }
         }
 

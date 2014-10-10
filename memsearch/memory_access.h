@@ -15,6 +15,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/**
+ * Process ID type.
+ **/
+typedef uint32_t pid_tt;
+
 #ifdef _WIN32
 
 #include <windows.h>
@@ -38,15 +43,10 @@ typedef HANDLE process_handle_t;
  **/
 typedef struct {
     task_t task;
-    pid_t pid;
+    pid_tt pid;
 } process_handle_t;
 
 #endif /* __MACH__ */
-
-/**
- * Process ID type.
- **/
-typedef uint32_t pid_tt;
 
 /**
  * This struct represents an error.
