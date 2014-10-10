@@ -49,7 +49,7 @@ func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
 
 	response := C.get_next_readable_memory_region(
 		p.hndl,
-		unsafe.Pointer(address),
+		C.memory_address_t(address),
 		&isAvailable,
 		&region)
 	defer C.response_free(response)
@@ -68,7 +68,7 @@ func (p process) CopyMemory(address uintptr, buffer []byte) error {
 	var bytesRead C.size_t
 
 	resp := C.copy_process_memory(p.hndl,
-		unsafe.Pointer(address),
+		C.memory_address_t(address),
 		C.size_t(n),
 		buf,
 		&bytesRead,

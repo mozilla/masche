@@ -1,4 +1,5 @@
 #include "memory_access.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 inline static BOOL is_readable(DWORD protection);
@@ -12,11 +13,14 @@ void response_free(response_t *response) {
     }
 
     error_free(response->fatal_error);
-    for (size_t i = 0; i < response->soft_errors_count; i++) {
-        LocalFree(response->soft_errors[i].description);
-    }
-    free(response->soft_errors);
+    if (response->soft_errors != NULL) {
+        for (size_t i = 0; i < response->soft_errors_count; i++) {
+            LocalFree(response->soft_errors[i].description);
+        }
+        free(response->soft_errors);
 
+
+    }
     free(response);
 }
 
@@ -54,6 +58,9 @@ static error_t *error_create(DWORD error_number) {
  * error_free releases the resources of a given error_t *
  **/
 static void error_free(error_t *err) {
+    if (err == NULL) {
+        return;
+    }
     LocalFree(err->description);
     free(err);
 }
@@ -85,7 +92,8 @@ response_t *close_process_handle(process_handle_t process_handle) {
 }
 
 response_t *get_next_readable_memory_region(process_handle_t handle,
-        void *address, bool *region_available, memory_region_t *memory_region) {
+        memory_address_t address, bool *region_available,
+        memory_region_t *memory_region) {
     response_t *response = response_create();
 
     memory_region->start_address = 0x0;
@@ -94,9 +102,10 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
 
     // Get all the contiguous readable memory regions starting from address.
     MEMORY_BASIC_INFORMATION info;
+
     while (TRUE) {
         SIZE_T r = VirtualQueryEx(handle,
-                                  address,
+                                  (void *) address,
                                   &info,
                                   sizeof(info));
         if (r == 0) {
@@ -110,23 +119,27 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
         }
 
         if (!is_readable(info.Protect)) {
-            break;
+            if (*region_available) {
+                break;
+            } else {
+                address = (memory_address_t) info.BaseAddress + info.RegionSize;
+                continue;
+            }
         }
 
         if (!*region_available) { // first time setting it.
             *region_available = true;
-            memory_region->start_address = info.BaseAddress;
-
+            memory_region->start_address = (memory_address_t) info.BaseAddress;
         } else {
             //TODO(mvanotti): Check bounds.
-            if ((char *) memory_region->start_address + memory_region->length !=
-                    info.BaseAddress) {
+            if (memory_region->start_address + memory_region->length !=
+                    (memory_address_t) info.BaseAddress) {
                 // This region isn't contiguous to the previous one.
                 break;
             }
         }
         memory_region->length += info.RegionSize;
-        address     = (char *) info.BaseAddress + info.RegionSize;
+        address     = (memory_address_t) info.BaseAddress + info.RegionSize;
     }
 
     return response;
@@ -144,10 +157,12 @@ inline static BOOL is_readable(DWORD protection) {
     }
 }
 
-response_t *copy_process_memory(process_handle_t handle, void *start_address,
+response_t *copy_process_memory(process_handle_t handle,
+                                memory_address_t start_address,
                                 size_t bytes_to_read, void *buffer, size_t *bytes_read) {
     response_t *response = response_create();
-    BOOL success = ReadProcessMemory(handle, start_address, buffer, bytes_to_read,
+    BOOL success = ReadProcessMemory(handle, (void *) start_address, buffer,
+                                     bytes_to_read,
                                      bytes_read);
     if (!success) {
         response->fatal_error = error_create(GetLastError());
