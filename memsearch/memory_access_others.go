@@ -8,6 +8,7 @@ import "C"
 
 import (
 	"fmt"
+	"runtime"
 	"unsafe"
 )
 
@@ -29,6 +30,7 @@ func OpenProcess(pid uint) (Process, error) {
 
 	result.pid = pid
 	return result, nil
+
 }
 
 func (p process) Close() error {
@@ -46,6 +48,9 @@ func (p process) Close() error {
 func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error) {
 	var isAvailable C.bool
 	var region C.memory_region_t
+	fmt.Println("It fails here.")
+	runtime.GC()
+	fmt.Println("And not here.")
 
 	response := C.get_next_readable_memory_region(
 		p.hndl,
@@ -53,7 +58,6 @@ func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
 		&isAvailable,
 		&region)
 	defer C.response_free(response)
-
 	return MemoryRegion{uintptr(region.start_address), uint(region.length)}, nil
 }
 
@@ -66,14 +70,15 @@ func (p process) CopyMemory(address uintptr, buffer []byte) error {
 
 	n := len(buffer)
 	var bytesRead C.size_t
-
 	resp := C.copy_process_memory(p.hndl,
 		C.memory_address_t(address),
 		C.size_t(n),
 		buf,
 		&bytesRead,
 	)
+
 	defer C.response_free(resp)
+
 	if resp.fatal_error != nil {
 		return fmt.Errorf("copy_process_memory failed with error %d: %s",
 			resp.fatal_error.error_number,
