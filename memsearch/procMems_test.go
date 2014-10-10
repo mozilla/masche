@@ -15,6 +15,23 @@ var buffersToFind = [][]byte{
 	[]byte{0xb, 0xe, 0xb, 0xe, 0xf, 0xe, 0x0},
 }
 
+func TestOpenProcess(t *testing.T) {
+	cmd := exec.Command("../test/tools/test.exe")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer cmd.Process.Kill()
+
+	pid := uint(cmd.Process.Pid)
+	fmt.Println("PID: ", pid)
+	fmt.Println("My PID: ", os.Getpid())
+	p, err := OpenProcess(pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+}
+
 func TestSearchInOtherProcess(t *testing.T) {
 	//TODO(mvanotti): Right now the command is hardcoded. We should decide how to fix this.
 	cmd := exec.Command("../test/tools/test.exe")
@@ -32,12 +49,12 @@ func TestSearchInOtherProcess(t *testing.T) {
 	}
 	defer p.Close()
 
-	for _, buf := range buffersToFind {
+	for i, buf := range buffersToFind {
 		_, found, err := FindNext(p, 0, buf)
 		if err != nil {
 			t.Fatal(err)
 		} else if !found {
-			t.Fatal("memoryGrep failed, the following buffer should be found", buf)
+			t.Fatalf("memoryGrep failed for case %d, the following buffer should be found: %+v", i, buf)
 		}
 	}
 
