@@ -154,7 +154,7 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
             continue;
         }
 
-        if ((info.protection & VM_PROT_READ) == VM_PROT_READ) {
+        if ((info.protection & VM_PROT_READ) != VM_PROT_READ) {
             char **descriptionptr = NULL;
             asprintf(descriptionptr,
                     "Memory unreadable in process %d: %llx-%llx", handle.pid,
