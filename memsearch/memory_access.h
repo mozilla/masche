@@ -49,6 +49,13 @@ typedef struct {
 #endif /* __MACH__ */
 
 /**
+ * Process ID type.
+ **/
+typedef uint32_t pid_tt;
+
+typedef unsigned long long memory_address_t;
+
+/**
  * This struct represents an error.
  *
  * error_number is the error as returned by the OS, 0 for no error.
@@ -84,7 +91,7 @@ typedef struct {
  * Note that this region is not necessary equivalent to the OS's region, if any.
  **/
 typedef struct {
-    void *start_address;
+    memory_address_t start_address;
     size_t length;
 } memory_region_t;
 
@@ -117,7 +124,8 @@ response_t *close_process_handle(process_handle_t process_handle);
  * it will be true, and the region will be returned in memory_region.
  **/
 response_t *get_next_readable_memory_region(process_handle_t handle,
-        void *address, bool *region_available, memory_region_t *memory_region);
+        memory_address_t address, bool *region_available,
+        memory_region_t *memory_region);
 
 
 /**
@@ -129,7 +137,8 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
  *
  * It's caller responsibility to provide a big enough buffer.
  **/
-response_t *copy_process_memory(process_handle_t handle, void *start_address,
+response_t *copy_process_memory(process_handle_t handle,
+                                memory_address_t start_address,
                                 size_t bytes_to_read, void *buffer, size_t *bytes_read);
 
 #endif /* __MEMORY_ACCESS__ */
