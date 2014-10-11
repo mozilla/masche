@@ -48,6 +48,15 @@ typedef struct {
 
 #endif /* __MACH__ */
 
+/**
+ * A type representing a memory address used to represent addresses in the
+ * inspected process.
+ *
+ * NOTE: This is necessary because Go doesn't allow us to have an unsafe pointer
+ * with an address that is not mapped in the current process.
+ *
+ * Portability note: C99 defines unsigned long long to be at least 64 bits long.
+ **/
 typedef unsigned long long memory_address_t;
 
 /**
