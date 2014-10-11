@@ -1,7 +1,6 @@
 package memsearch
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"testing"
@@ -23,8 +22,6 @@ func TestOpenProcess(t *testing.T) {
 	defer cmd.Process.Kill()
 
 	pid := uint(cmd.Process.Pid)
-	fmt.Println("PID: ", pid)
-	fmt.Println("My PID: ", os.Getpid())
 	p, err := OpenProcess(pid)
 	if err != nil {
 		t.Fatal(err)
@@ -41,8 +38,6 @@ func TestSearchInOtherProcess(t *testing.T) {
 	defer cmd.Process.Kill()
 
 	pid := uint(cmd.Process.Pid)
-	fmt.Println("PID: ", pid)
-	fmt.Println("My PID: ", os.Getpid())
 	p, err := OpenProcess(pid)
 	if err != nil {
 		t.Fatal(err)

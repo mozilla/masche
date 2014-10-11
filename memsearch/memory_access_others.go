@@ -8,7 +8,6 @@ import "C"
 
 import (
 	"fmt"
-	"runtime"
 	"unsafe"
 )
 
@@ -48,9 +47,6 @@ func (p process) Close() error {
 func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error) {
 	var isAvailable C.bool
 	var region C.memory_region_t
-	fmt.Println("It fails here.")
-	runtime.GC()
-	fmt.Println("And not here.")
 
 	response := C.get_next_readable_memory_region(
 		p.hndl,
