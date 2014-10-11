@@ -122,13 +122,13 @@ response_t *close_process_handle(process_handle_t process_handle) {
 }
 
 response_t *get_next_readable_memory_region(process_handle_t handle,
-        void *address, bool *region_available, memory_region_t *memory_region) {
+        memory_address_t address, bool *region_available, memory_region_t *memory_region) {
     response_t *response = response_create();
 
     kern_return_t kret;
     struct vm_region_submap_info_64 info;
     mach_msg_type_number_t info_count = 0;
-    mach_vm_address_t addr = (mach_vm_address_t) address;
+    mach_vm_address_t addr = address;
     mach_vm_size_t size = 0;
     uint32_t depth = 0;
     *region_available = false;
@@ -171,11 +171,10 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
         } else {
             if (!(*region_available)) {
                 *region_available = true;
-                memory_region->start_address = (void *) addr;
+                memory_region->start_address = addr;
                 memory_region->length = size;
             } else {
-                mach_vm_address_t limit_address =
-                    (mach_vm_address_t) memory_region->start_address +
+                memory_address_t limit_address = memory_region->start_address +
                     memory_region->length;
 
                 if (limit_address < addr) {
@@ -193,13 +192,14 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
     return response;
 }
 
-response_t *copy_process_memory(process_handle_t handle, void *start_address,
-        size_t bytes_to_read, void *buffer, size_t *bytes_read) {
+response_t *copy_process_memory(process_handle_t handle,
+        memory_address_t start_address, size_t bytes_to_read, void *buffer,
+        size_t *bytes_read) {
+
     response_t *response = response_create();
 
     mach_vm_size_t read;
-    kern_return_t kret = mach_vm_read_overwrite(handle.task,
-            (mach_vm_address_t) start_address,
+    kern_return_t kret = mach_vm_read_overwrite(handle.task, start_address,
             bytes_to_read, (mach_vm_address_t) buffer, &read);
 
     if (kret != KERN_SUCCESS) {
