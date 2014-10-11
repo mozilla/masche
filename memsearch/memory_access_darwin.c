@@ -122,7 +122,8 @@ response_t *close_process_handle(process_handle_t process_handle) {
 }
 
 response_t *get_next_readable_memory_region(process_handle_t handle,
-        memory_address_t address, bool *region_available, memory_region_t *memory_region) {
+        memory_address_t address, bool *region_available,
+        memory_region_t *memory_region) {
     response_t *response = response_create();
 
     kern_return_t kret;
