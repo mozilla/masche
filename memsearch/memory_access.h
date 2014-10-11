@@ -48,11 +48,6 @@ typedef struct {
 
 #endif /* __MACH__ */
 
-/**
- * Process ID type.
- **/
-typedef uint32_t pid_tt;
-
 typedef unsigned long long memory_address_t;
 
 /**
