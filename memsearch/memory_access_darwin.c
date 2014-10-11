@@ -77,13 +77,14 @@ static void response_add_soft_error(response_t *response, int error_number,
         response->soft_errors_count = 0;
         response->soft_errors_capacity = SOFT_ERRORS_INITIAL_CAPACITY;
         response->soft_errors = calloc(SOFT_ERRORS_INITIAL_CAPACITY,
-                sizeof(error_t));
+                sizeof(*response->soft_errors));
     }
 
     if (response->soft_errors_count == response->soft_errors_capacity) {
         response->soft_errors_capacity *= SOFT_ERRORS_REALLOCATION_FACTOR;
         response->soft_errors = realloc(response->soft_errors,
-                response->soft_errors_capacity);
+                response->soft_errors_capacity *
+                sizeof(*response->soft_errors));
     }
 
     response->soft_errors[response->soft_errors_count].error_number =
@@ -155,15 +156,15 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
         }
 
         if ((info.protection & VM_PROT_READ) != VM_PROT_READ) {
-            char **descriptionptr = NULL;
+            char *description = NULL;
             asprintf(
-                descriptionptr,
+                &description,
                 "Memory unreadable in process %d: %llx-%llx",
                 handle.pid,
                 addr,
                 addr + size - 1
             );
-            response_add_soft_error(response, -1, *descriptionptr);
+            response_add_soft_error(response, -1, description);
 
             if (*region_available) {
                 return response;
