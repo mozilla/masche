@@ -103,8 +103,7 @@ response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
     if (kret != KERN_SUCCESS) {
         response_set_fatal_error(response, kret);
     } else {
-        handle->task = task;
-        handle->pid = pid;
+        *handle = task;
     }
 
     return response;
@@ -114,7 +113,7 @@ response_t *close_process_handle(process_handle_t process_handle) {
     kern_return_t kret;
     response_t *response = response_create();
 
-    kret = mach_port_deallocate(mach_task_self(), process_handle.task);
+    kret = mach_port_deallocate(mach_task_self(), process_handle);
     if (kret != KERN_SUCCESS) {
         response_set_fatal_error(response, kret);
     }
@@ -136,10 +135,8 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
 
     for (;;) {
         info_count = VM_REGION_SUBMAP_INFO_COUNT_64;
-        kret = mach_vm_region_recurse(handle.task,
-            &addr, &size, &depth,
-            (vm_region_recurse_info_t)&info,
-            &info_count);
+        kret = mach_vm_region_recurse(handle, &addr, &size, &depth,
+                (vm_region_recurse_info_t)&info, &info_count);
 
         if (kret == KERN_INVALID_ADDRESS) {
             break;
@@ -159,8 +156,7 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
             char *description = NULL;
             asprintf(
                 &description,
-                "Memory unreadable in process %d: %llx-%llx",
-                handle.pid,
+                "Memory unreadable: %llx-%llx",
                 addr,
                 addr + size - 1
             );
@@ -200,7 +196,7 @@ response_t *copy_process_memory(process_handle_t handle,
     response_t *response = response_create();
 
     mach_vm_size_t read;
-    kern_return_t kret = mach_vm_read_overwrite(handle.task, start_address,
+    kern_return_t kret = mach_vm_read_overwrite(handle, start_address,
             bytes_to_read, (mach_vm_address_t) buffer, &read);
 
     if (kret != KERN_SUCCESS) {
