@@ -69,11 +69,12 @@ static void error_free(error_t *err) {
 response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
     response_t *res = response_create();
 
-    *handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-                          FALSE,
-                          pid);
+    *handle = (unsigned long long) OpenProcess(PROCESS_QUERY_INFORMATION |
+              PROCESS_VM_READ,
+              FALSE,
+              pid);
 
-    if (*handle == NULL) {
+    if (*handle == 0) {
         res->fatal_error = error_create(GetLastError());
     }
 
@@ -83,7 +84,7 @@ response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
 response_t *close_process_handle(process_handle_t process_handle) {
     //TODO(mvanotti): See which errors should be considered hard and which ones soft.
     response_t *res = response_create();
-    BOOL success = CloseHandle(process_handle);
+    BOOL success = CloseHandle((HANDLE) process_handle);
     if (!success) {
         res->fatal_error = error_create(GetLastError());
     }
@@ -104,7 +105,7 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
     MEMORY_BASIC_INFORMATION info;
 
     while (TRUE) {
-        SIZE_T r = VirtualQueryEx(handle,
+        SIZE_T r = VirtualQueryEx((HANDLE) handle,
                                   (void *) address,
                                   &info,
                                   sizeof(info));
@@ -161,7 +162,8 @@ response_t *copy_process_memory(process_handle_t handle,
                                 memory_address_t start_address,
                                 size_t bytes_to_read, void *buffer, size_t *bytes_read) {
     response_t *response = response_create();
-    BOOL success = ReadProcessMemory(handle, (void *) start_address, buffer,
+    BOOL success = ReadProcessMemory((HANDLE) handle, (void *) start_address,
+                                     buffer,
                                      bytes_to_read,
                                      bytes_read);
     if (!success) {

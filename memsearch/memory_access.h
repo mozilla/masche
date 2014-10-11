@@ -27,10 +27,11 @@ typedef uint32_t pid_tt;
 /**
  * Windows specific process handle.
  *
- * handle represent the handle to an process object
- * pid is the process id.
+ * This is a workaround for issue 8921: https://code.google.com/p/go/issues/detail?id=8921
+ * Go gc panics if process_handle_t is HANDLE (which is PVOID).
+ * For now we have to use unsigned long long to hold the HANDLE object.
  **/
-typedef HANDLE process_handle_t;
+typedef unsigned long long process_handle_t;
 
 #endif /* _WIN32 */
 
