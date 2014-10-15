@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-inline static BOOL is_readable(DWORD protection);
+inline static BOOL is_readable(MEMORY_BASIC_INFORMATION info);
 static response_t *response_create();
 static error_t *error_create(DWORD error_number);
 static void error_free(error_t *err);
@@ -119,7 +119,8 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
             break;
         }
 
-        if (!is_readable(info.Protect)) {
+
+        if (!is_readable(info)) {
             if (*region_available) {
                 break;
             } else {
@@ -142,12 +143,15 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
         memory_region->length += info.RegionSize;
         address     = (memory_address_t) info.BaseAddress + info.RegionSize;
     }
-
     return response;
 }
 
-inline static BOOL is_readable(DWORD protection) {
-    switch (protection) {
+inline static BOOL is_readable(MEMORY_BASIC_INFORMATION info) {
+    if (info.State == MEM_FREE) {
+        return FALSE;
+    }
+
+    switch (info.Protect) {
     case PAGE_EXECUTE_READ:
     case PAGE_EXECUTE_READWRITE:
     case PAGE_READONLY:
