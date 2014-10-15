@@ -117,18 +117,20 @@ func FindNext(ph Process, address uintptr, needle []byte) (uintptr, bool, error)
 
 // findInRegion looks for the needle inside a given memory region.
 func findInRegion(p Process, region MemoryRegion, needle []byte) (uintptr, bool, error) {
-	//TODO: We should change this for a more efficient algorithm.
-
-	buf := make([]byte, len(needle)) //TODO: Use a bigger buffer.
+	buf := make([]byte, 4096)
 	for i := uint(0); i < region.size-uint(len(buf)); i++ {
 		err := p.CopyMemory(region.address+uintptr(i), buf)
 		if err != nil {
-			return 0, false, err
+			return 0, false, error
 		}
-		if areEqual(buf, needle) {
-			return region.address + uintptr(i), true, err
+
+		for j := 0; j < len(buf)-len(needle); j++ {
+			if areEqual(buf[j:j+len(needle)], needle) {
+				return region.address + uintptr(i) + uintptr(j), true, nil
+			}
 		}
 	}
+
 	return 0, false, nil
 }
 
