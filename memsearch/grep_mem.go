@@ -121,7 +121,7 @@ func findInRegion(p Process, region MemoryRegion, needle []byte) (uintptr, bool,
 	for i := uint(0); i < region.size-uint(len(buf)); i++ {
 		err := p.CopyMemory(region.address+uintptr(i), buf)
 		if err != nil {
-			return 0, false, error
+			return 0, false, err
 		}
 
 		for j := 0; j < len(buf)-len(needle); j++ {
