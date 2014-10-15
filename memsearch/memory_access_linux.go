@@ -1,4 +1,4 @@
-package memsearch
+package main
 
 import (
 	"bufio"
@@ -53,30 +53,30 @@ func (p process) Close() error {
 func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error) {
 	mapsFile, err := os.Open(p.mapsFilepath)
 	if err != nil {
-		return nil, err
+		return MemoryRegion{}, err
 	}
 	defer mapsFile.Close()
 
-	name, err := nameByPID(p.pid)
+	path, err := pathByPID(p.pid)
 	if err != nil {
-		return nil, err
+		return MemoryRegion{}, err
 	}
 
-	mappedAddresses, err := getMappedAddresses(mapsFile, name)
+	mappedAddresses, err := getMappedAddresses(mapsFile, path)
 	if err != nil {
-		return nil, err
+		return MemoryRegion{}, err
 	}
 
 	mappedRegion, err := nextReadableMappedRegion(address, mappedAddresses)
 	if err != nil {
-		return nil, err
+		return MemoryRegion{}, err
 	}
 
-	if mappedRegion != nil {
+	if mappedRegion.start != 0 {
 		size := uint(mappedRegion.end - mappedRegion.start)
 		return MemoryRegion{mappedRegion.start, size}, nil
 	}
-	return nil, nil
+	return MemoryRegion{}, nil
 }
 
 func nextReadableMappedRegion(address uintptr, mappedAddresses []mapInfo) (mapInfo, error) {
@@ -93,13 +93,13 @@ func nextReadableMappedRegion(address uintptr, mappedAddresses []mapInfo) (mapIn
 		}
 	}
 	// there's no mapped region with address inside it and no next region
-	return nil, nil
+	return mapInfo{}, nil
 }
 
-func getMappedAddresses(mapsFile File, name string) ([]mapInfo, error) {
+func getMappedAddresses(mapsFile *os.File, path string) ([]mapInfo, error) {
 	res := make([]mapInfo, 0)
 	scanner := bufio.NewScanner(mapsFile)
-	goals := []string{"[heap]", "[stack]", name} // we want to look into the binary memory, its heap and its stack
+	goals := []string{"[heap]", "[stack]", path} // we want to look into the binary memory, its heap and its stack
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -110,8 +110,10 @@ func getMappedAddresses(mapsFile File, name string) ([]mapInfo, error) {
 		}
 		if stringInSlice(items[len(items)-1], goals) {
 			fields := strings.Split(items[0], "-")
-			start, _ := strconv.ParseInt(fields[0], 16, 64) // TODO: check this. start and end are now uintptr
-			end, _ := strconv.ParseInt(fields[1], 16, 64)   // idem
+			start64, _ := strconv.ParseUint(fields[0], 16, 64)
+			start := uintptr(start64)
+			end64, _ := strconv.ParseUint(fields[1], 16, 64)
+			end := uintptr(end64)
 			info := mapInfo{start: start, end: end}
 			res = append(res, info)
 		}
@@ -123,19 +125,21 @@ func getMappedAddresses(mapsFile File, name string) ([]mapInfo, error) {
 }
 
 func (p process) ReadMemory(address uintptr, size uint) ([]byte, error) {
-	return nil, nil
+	buffer := make([]byte, size)
+	err := p.CopyMemory(address, buffer)
+	if err != nil {
+		return nil, err
+	}
+	return buffer, nil
 }
 
 func (p process) CopyMemory(address uintptr, buffer []byte) error {
-	var size int
-	size = len(buffer)
-	buffer = p.ReadMemory(address, size)
+
 	return nil
 }
 
 func nameByPID(pid uint) (string, error) {
 	// inside /proc/[pid]/stat is the name of the binary between parentheses as second word
-	// should be pathByPID (because we need to compare with the full path)
 	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "stat")
 	f, err := os.Open(path)
 	if err != nil {
@@ -155,6 +159,16 @@ func nameByPID(pid uint) (string, error) {
 	return res, nil
 }
 
+func pathByPID(pid uint) (string, error) {
+	// the file /proc/[pid]/exe is a link to the binary
+	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "exe")
+	res, err := os.Readlink(path)
+	if err != nil {
+		return "", err
+	}
+	return res, nil
+}
+
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if a == b {
@@ -162,4 +176,25 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+// test main
+func main() {
+	var pid uint
+	fmt.Scanf("%d", &pid)
+	name, _ := pathByPID(pid)
+	fmt.Println(name)
+
+	p, err := OpenProcess(pid)
+	if err != nil {
+		fmt.Println("Error", err)
+	}
+	region, _ := p.NextReadableMemoryRegion(0)
+	for region.address != 0 {
+		fmt.Printf("%x", region.address)
+		fmt.Println()
+		fmt.Printf("%d", region.size)
+		fmt.Println()
+		region, _ = p.NextReadableMemoryRegion(region.address + uintptr(region.size))
+	}
 }
