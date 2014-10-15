@@ -1,6 +1,6 @@
-package memsearch
-
 // +build windows darwin
+
+package memsearch
 
 // #include "memory_access.h"
 // #cgo CFLAGS: -std=c99
@@ -29,6 +29,7 @@ func OpenProcess(pid uint) (Process, error) {
 
 	result.pid = pid
 	return result, nil
+
 }
 
 func (p process) Close() error {
@@ -49,11 +50,10 @@ func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
 
 	response := C.get_next_readable_memory_region(
 		p.hndl,
-		unsafe.Pointer(address),
+		C.memory_address_t(address),
 		&isAvailable,
 		&region)
 	defer C.response_free(response)
-
 	return MemoryRegion{uintptr(region.start_address), uint(region.length)}, nil
 }
 
@@ -66,13 +66,13 @@ func (p process) CopyMemory(address uintptr, buffer []byte) error {
 
 	n := len(buffer)
 	var bytesRead C.size_t
-
 	resp := C.copy_process_memory(p.hndl,
-		unsafe.Pointer(address),
+		C.memory_address_t(address),
 		C.size_t(n),
 		buf,
 		&bytesRead,
 	)
+
 	defer C.response_free(resp)
 
 	if resp.fatal_error != nil {
@@ -80,6 +80,5 @@ func (p process) CopyMemory(address uintptr, buffer []byte) error {
 			resp.fatal_error.error_number,
 			C.GoString(resp.fatal_error.description))
 	}
-
 	return nil
 }

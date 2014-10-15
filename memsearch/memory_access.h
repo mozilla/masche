@@ -27,10 +27,11 @@ typedef uint32_t pid_tt;
 /**
  * Windows specific process handle.
  *
- * handle represent the handle to an process object
- * pid is the process id.
+ * This is a workaround for issue 8921: https://code.google.com/p/go/issues/detail?id=8921
+ * Go gc panics if process_handle_t is HANDLE (which is PVOID).
+ * For now we have to use unsigned long long to hold the HANDLE object.
  **/
-typedef HANDLE process_handle_t;
+typedef unsigned long long process_handle_t;
 
 #endif /* _WIN32 */
 
@@ -41,12 +42,20 @@ typedef HANDLE process_handle_t;
 /**
  * Mac specific process handle.
  **/
-typedef struct {
-    task_t task;
-    pid_tt pid;
-} process_handle_t;
+typedef task_t process_handle_t;
 
 #endif /* __MACH__ */
+
+/**
+ * A type representing a memory address used to represent addresses in the
+ * inspected process.
+ *
+ * NOTE: This is necessary because Go doesn't allow us to have an unsafe pointer
+ * with an address that is not mapped in the current process.
+ *
+ * Portability note: C99 defines unsigned long long to be at least 64 bits long.
+ **/
+typedef unsigned long long memory_address_t;
 
 /**
  * This struct represents an error.
@@ -84,7 +93,7 @@ typedef struct {
  * Note that this region is not necessary equivalent to the OS's region, if any.
  **/
 typedef struct {
-    void *start_address;
+    memory_address_t start_address;
     size_t length;
 } memory_region_t;
 
@@ -117,7 +126,8 @@ response_t *close_process_handle(process_handle_t process_handle);
  * it will be true, and the region will be returned in memory_region.
  **/
 response_t *get_next_readable_memory_region(process_handle_t handle,
-        void *address, bool *region_available, memory_region_t *memory_region);
+        memory_address_t address, bool *region_available,
+        memory_region_t *memory_region);
 
 
 /**
@@ -129,7 +139,8 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
  *
  * It's caller responsibility to provide a big enough buffer.
  **/
-response_t *copy_process_memory(process_handle_t handle, void *start_address,
+response_t *copy_process_memory(process_handle_t handle,
+                                memory_address_t start_address,
                                 size_t bytes_to_read, void *buffer, size_t *bytes_read);
 
 #endif /* __MEMORY_ACCESS__ */
