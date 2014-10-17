@@ -1,7 +1,10 @@
 package memsearch
 
-//TODO(aemartinez): Add documentation.
+import (
+	"bytes"
+)
 
+//TODO(aemartinez): Add documentation.
 type MemoryRegion struct {
 	address uintptr
 	size    uint
@@ -14,132 +17,102 @@ type Process interface {
 	CopyMemory(address uintptr, buffer []byte) error
 }
 
-// Find looks for needle in Process p's memory.
-// It works like FindNext but it doesn't search the memory in a linear way.
-// The address returned is not guaranteed to be the lowest address that contains the needle.
-func Find(p Process, needle []byte) (addr uintptr, found bool, errs []error) {
-	type result struct {
-		address uintptr
-		found   bool
-		err     error
-	}
+type WalkFunc func(address uintptr, buf []byte) (keepSearching bool)
 
-	workers := 50
+const max_retries int = 5
 
-	results := make(chan result, workers)
-
-	// regions chan is used for sending jobs to the workers.
-	// Each job consists in one memory region to search in.
-	regions := make(chan MemoryRegion, workers)
-
-	end := make(chan bool) // This chan will be closed to stop all workers after we find the first result.
-
-	// spawn workers
-	for i := 0; i < workers; i++ {
-		go func() {
-			for r := range regions {
-				addr, found, err := findInRegion(p, r, needle)
-				select {
-				case results <- result{addr, found, err}:
-				case <-end:
-					return
-				}
-			}
-		}()
-	}
-
-	// iterate over all regions
-	count := 0
-	go func() {
-		defer close(regions)
-
-		address := uintptr(0)
-		for {
-			region, err := p.NextReadableMemoryRegion(address)
-			if err != nil {
-				//TODO(mvanotti): return error.
-				return
-			}
-			if region.size == 0 {
-				return
-			}
-			select {
-			case regions <- region:
-				count += 1
-			case <-end:
-				return
-			}
-			address = region.address + uintptr(region.size)
-		}
-	}()
-
-	// check for results.
-	found = false
-	addr = 0
-	for done := 0; done < count; done++ {
-		r := <-results
-		if r.err != nil {
-			errs = append(errs, r.err)
-		}
-		if r.found {
-			found = r.found
-			addr = r.address
-			break
-		}
-	}
-
-	// we don't want to keep the workers waiting so we let them know that we are done by closing this channel.
-	close(end)
-
-	return addr, found, errs
-}
+var emptyRegion MemoryRegion
 
 // FindNext finds for the first occurrence of needle in the memory of Process ph after the given address.
 func FindNext(ph Process, address uintptr, needle []byte) (uintptr, bool, error) {
-	region, err := ph.NextReadableMemoryRegion(address)
-	if err != nil {
-		return 0, false, err
-	}
-	for region.address != 0 {
-		res, found, err := findInRegion(ph, region, needle)
-		if err != nil {
-			return 0, false, err
-		} else if found {
-			return res, found, nil
-		}
-		region, err = ph.NextReadableMemoryRegion(region.address + uintptr(region.size))
-		if err != nil {
-			return 0, false, err
-		}
-	}
-	return 0, false, nil
-}
-
-// findInRegion looks for the needle inside a given memory region.
-func findInRegion(p Process, region MemoryRegion, needle []byte) (uintptr, bool, error) {
-	buf := make([]byte, 4096)
-	for i := uint(0); i < region.size-uint(len(buf)); i++ {
-		err := p.CopyMemory(region.address+uintptr(i), buf)
-		if err != nil {
-			return 0, false, err
-		}
-
-		for j := 0; j < len(buf)-len(needle); j++ {
-			if areEqual(buf[j:j+len(needle)], needle) {
-				return region.address + uintptr(i) + uintptr(j), true, nil
+	addr := uintptr(0)
+	found := false
+	hard, _ := WalkMemory(ph, address, 4096,
+		func(address uintptr, buf []byte) (keepSearching bool) {
+			i := bytes.Index(buf, needle)
+			if i == -1 {
+				return true
 			}
-		}
-	}
 
-	return 0, false, nil
+			addr = address + uintptr(i)
+			found = true
+			return false
+		})
+	return addr, found, hard
 }
 
-// areEqual returns true if and only if the two slices contains te same elements.
-func areEqual(s1 []byte, s2 []byte) bool {
-	for index, _ := range s1 {
-		if s1[index] != s2[index] {
-			return false
+//TODO(mvanotti): change the multiple return value to a specific error with an address field.
+//TODO(mvanotti): Add documentation.
+func walkRegion(p Process, region MemoryRegion, buf []byte, walkFn WalkFunc) (bool, uintptr, error) {
+	bufSz := uint(len(buf))
+	address := region.address
+
+	// We divide the memory region in blocks of bufSz/2 bytes, and for each block (except the last one), we read bufSz bytes.
+	// We leave the last block out, so we can later read the last bufSz bytes starting from te end (reading the last block and the remaining)
+	// For example, if we have a region with size 17 and bufSize of size 8, we divide it in regions of 4 bytes:
+	// 0-3, 4-7, 8-11, 12-15 and the reamining byte is left out: 16
+	// we read 0 to 7 (8 bytes), 4 to 11 (8 bytes), and 8 to 15 (8 bytes).
+	// after that, we read the last 8 bytes: 9 to 16.
+	// in this case, i will take values 0, 1 and 2
+	for i := uint(0); i < region.size/(bufSz/2)-1; i, address = i+1, address+uintptr(bufSz/2) {
+		err := p.CopyMemory(address, buf)
+		if err != nil {
+			return false, address, err
+		}
+		if !walkFn(address, buf) {
+			return false, 0, nil
 		}
 	}
-	return true
+
+	// Get the remaining part:
+	// We have at most bufSize/2 bytes to walk, so we copy the last bufSize bytes to get the window between the last two chunks.
+	if region.size%(bufSz/2) != 0 {
+		address = region.address + uintptr(region.size-bufSz)
+		err := p.CopyMemory(address, buf)
+		if err != nil {
+			return false, address, err
+		}
+
+		return walkFn(address, buf), 0, nil
+	}
+
+	return true, 0, nil
+}
+
+// TODO(mvanotti): Add documentation.
+func WalkMemory(p Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error, softerrors []error) {
+	region, harderror := p.NextReadableMemoryRegion(startAddress)
+	if harderror != nil {
+		return
+	}
+
+	buf := make([]byte, bufSize)
+	retries := max_retries
+	softerrors = make([]error, 0)
+
+	for region != emptyRegion {
+		keepWalking, addr, err := walkRegion(p, region, buf, walkFn)
+		if err != nil && retries > 0 {
+			// An error occurred: retry using the nearest region to the address that failed.
+			retries--
+			region, harderror = p.NextReadableMemoryRegion(addr)
+			if harderror != nil {
+				return
+			}
+
+			continue
+		} else if err != nil {
+			// we have exceeded our retries, mark the error as soft error and keep going.
+			softerrors = append(softerrors, err)
+		} else if !keepWalking {
+			return
+		}
+
+		region, harderror = p.NextReadableMemoryRegion(region.address + uintptr(region.size))
+		if harderror != nil {
+			return
+		}
+		retries = max_retries
+	}
+	return
 }
