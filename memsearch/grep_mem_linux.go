@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,25 +14,8 @@ type mapInfo struct {
 	end   int64
 }
 
-type memManagerData struct {
-	pos int64
-	buf []byte
-	memory *os.File
-}
-
-//TODO: write memManager
-//initializeMemManager returns the memManagerData structure needed to make the subsecuent calls to readAtMemManager
-func initializeMemManager(region mapInfo, memory *os.File, length uint) (memManagerData, error){
-	res := memManagerData{pos: 0, buf: , memory: memory}
-}
-
-//readAtMemManager 
-func readAtMemManager(memManagerData, buf []byte, pos uint){
-	
-}
-
 // mappedAddresses gives the stack and heap addresses for a given pid
-func mappedAddresses(pid uint) ([]mapInfo, error) {
+func mappedAdresses(pid uint) ([]mapInfo, error) {
 
 	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
 	f, err := os.Open(path)
@@ -82,7 +64,7 @@ func stringInSlice(a string, list []string) bool {
 }
 
 func MemoryGrep(pid uint, str []byte) (bool, error) {
-	maps, err := mappedAddresses(pid)
+	maps, err := mappedAdresses(pid)
 	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
 	f, err := os.Open(path)
 	if err != nil {
@@ -124,19 +106,15 @@ func nameByPID(pid uint) (string, error) {
 }
 
 func searchString(str []byte, region mapInfo, memory *os.File) (bool, error) {
-	length = int64(math.Min(512, len(str))) // our buffer will be 512 bytes long unless the string we're looking for is bigger
-	buf := make([]byte, length)
-	mmanager := initializeMemManager(region, memory, len(str))
-	pos = region.start
-	for pos < region.end-length {
-		_, err := readAtMemManager(mmanager, buf, pos)
+	buf := make([]byte, len(str))
+	for pos := region.start; pos < region.end-int64(len(str)); pos++ {
+		_, err := memory.ReadAt(buf, pos)
 		if err != nil {
 			return false, err
 		}
 		if areEqual(str, buf) {
 			return true, nil
 		}
-		pos += length
 	}
 	return false, nil
 }
