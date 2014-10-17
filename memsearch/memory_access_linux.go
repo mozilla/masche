@@ -112,9 +112,15 @@ func getMappedAddresses(mapsFile *os.File, path string) ([]mapInfo, error) {
 		}
 		if stringInSlice(items[len(items)-1], goals) {
 			fields := strings.Split(items[0], "-")
-			start64, _ := strconv.ParseUint(fields[0], 16, 64)
+			start64, err := strconv.ParseUint(fields[0], 16, 64)
+			if err != nil {
+				return nil, err
+			}
+			end64, err := strconv.ParseUint(fields[1], 16, 64)
+			if err != nil {
+				return nil, err
+			}
 			start := uintptr(start64)
-			end64, _ := strconv.ParseUint(fields[1], 16, 64)
 			end := uintptr(end64)
 			info := mapInfo{start: start, end: end}
 			res = append(res, info)
