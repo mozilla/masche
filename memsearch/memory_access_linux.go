@@ -24,6 +24,7 @@ type Process interface {
 type process struct {
 	pid          uint
 	mapsFilepath string
+	memFilepath  string
 }
 
 type mapInfo struct {
@@ -35,7 +36,8 @@ func OpenProcess(pid uint) (Process, error) {
 	var result process
 	result.pid = pid
 	result.mapsFilepath = filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
-	// trying to open the maps file, only to see if that gives an error
+	result.memFilepath = filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
+	// trying to open the maps file, only to see if gives an error
 	f, err := os.Open(result.mapsFilepath)
 	if err != nil {
 		return nil, err
@@ -134,7 +136,15 @@ func (p process) ReadMemory(address uintptr, size uint) ([]byte, error) {
 }
 
 func (p process) CopyMemory(address uintptr, buffer []byte) error {
-
+	mem, err := os.Open(p.memFilepath)
+	if err != nil {
+		return err
+	}
+	defer mem.Close()
+	_, err = mem.ReadAt(buffer, int64(address))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -178,23 +188,39 @@ func stringInSlice(a string, list []string) bool {
 	return false
 }
 
+func areEqual(s1 []byte, s2 []byte) bool {
+	for index, _ := range s1 {
+		if s1[index] != s2[index] {
+			return false
+		}
+	}
+	return true
+}
+
 // test main
 func main() {
 	var pid uint
+	var str []byte
 	fmt.Scanf("%d", &pid)
 	name, _ := pathByPID(pid)
 	fmt.Println(name)
+	fmt.Scanf("%s", &str)
 
 	p, err := OpenProcess(pid)
 	if err != nil {
 		fmt.Println("Error", err)
 	}
+
 	region, _ := p.NextReadableMemoryRegion(0)
 	for region.address != 0 {
-		fmt.Printf("%x", region.address)
-		fmt.Println()
-		fmt.Printf("%d", region.size)
-		fmt.Println()
+		fmt.Printf("%x\n", region.address)
+		fmt.Printf("%d\n", region.size)
+		mem, _ := p.ReadMemory(region.address, region.size)
+		for pos := 0; pos < len(mem); pos++ {
+			if areEqual(str, mem[pos:pos+len(str)+10]) {
+				fmt.Println("Encontrado")
+			}
+		}
 		region, _ = p.NextReadableMemoryRegion(region.address + uintptr(region.size))
 	}
 }
