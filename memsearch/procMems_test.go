@@ -32,10 +32,22 @@ func TestOpenProcess(t *testing.T) {
 func TestSearchInOtherProcess(t *testing.T) {
 	//TODO(mvanotti): Right now the command is hardcoded. We should decide how to fix this.
 	cmd := exec.Command("../test/tools/test.exe")
+
+	childout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer childout.Close()
+
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
 	defer cmd.Process.Kill()
+
+	// Wait until the process writes something to stdout, so we know it has initialized all its memory.
+	if read, err := childout.Read(make([]byte, 1)); err != nil || read != 1 {
+		t.Fatal(err)
+	}
 
 	pid := uint(cmd.Process.Pid)
 	p, err := OpenProcess(pid)

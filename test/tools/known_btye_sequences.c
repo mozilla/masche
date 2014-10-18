@@ -17,9 +17,11 @@ int main(void) {
     in_heap[5] = 0xe;
     in_heap[6] = 0x0;
 
+    // By writing to stdout and flushing we are letting the parent process know that we have initialized everything.
     printf("In Data Segment: %p\n"
            "In Stack: %p\n"
            "In Heap: %p\n", in_data_segment, in_stack, in_heap);
+    fflush(stdout);
 
     for (;;) sleep(1);
 
