@@ -71,7 +71,7 @@ func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
 
 func nextReadableMappedRegion(address uintptr, mappedAddresses []mapInfo) (mapInfo, error) {
 	for _, mapinfo := range mappedAddresses {
-		if address > mapinfo.start && address < mapinfo.end {
+		if mapinfo.start <= address && address < mapinfo.end {
 			return mapinfo, nil
 		}
 	}
