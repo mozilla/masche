@@ -1,4 +1,4 @@
-package main
+package memaccess
 
 import (
 	"bufio"
@@ -8,18 +8,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-type MemoryRegion struct {
-	address uintptr
-	size    uint
-}
-
-type Process interface {
-	Close() error
-	NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
-	ReadMemory(address uintptr, size uint) ([]byte, error)
-	CopyMemory(address uintptr, buffer []byte) error
-}
 
 type process struct {
 	pid          uint
@@ -201,32 +189,4 @@ func areEqual(s1 []byte, s2 []byte) bool {
 		}
 	}
 	return true
-}
-
-// test main
-func main() {
-	var pid uint
-	var str []byte
-	fmt.Scanf("%d", &pid)
-	name, _ := pathByPID(pid)
-	fmt.Println(name)
-	fmt.Scanf("%s", &str)
-
-	p, err := OpenProcess(pid)
-	if err != nil {
-		fmt.Println("Error", err)
-	}
-
-	region, _ := p.NextReadableMemoryRegion(0)
-	for region.address != 0 {
-		fmt.Printf("%x\n", region.address)
-		fmt.Printf("%d\n", region.size)
-		mem, _ := p.ReadMemory(region.address, region.size)
-		for pos := 0; pos < len(mem); pos++ {
-			if areEqual(str, mem[pos:pos+len(str)+10]) {
-				fmt.Println("Encontrado")
-			}
-		}
-		region, _ = p.NextReadableMemoryRegion(region.address + uintptr(region.size))
-	}
 }

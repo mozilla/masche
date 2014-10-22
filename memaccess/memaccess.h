@@ -1,5 +1,5 @@
-#ifndef __MEMORY_ACCESS__
-#define __MEMORY_ACCESS__
+#ifndef MEMACCES_H
+#define MEMACCES_H
 
 /**
  * This header defines a common interface for reading processes' memory.
@@ -143,5 +143,5 @@ response_t *copy_process_memory(process_handle_t handle,
                                 memory_address_t start_address,
                                 size_t bytes_to_read, void *buffer, size_t *bytes_read);
 
-#endif /* __MEMORY_ACCESS__ */
+#endif /* MEMACCES_H */
 

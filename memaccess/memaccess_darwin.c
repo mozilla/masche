@@ -4,7 +4,7 @@
 
 #include <mach/mach_vm.h>
 
-#include "memory_access.h"
+#include "memaccess.h"
 
 /**
  * Creates a new error_t for a given kern_return_t.

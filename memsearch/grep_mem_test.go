@@ -1,6 +1,7 @@
 package memsearch
 
 import (
+	"../memaccess"
 	"os"
 	"os/exec"
 	"testing"
@@ -22,7 +23,7 @@ func TestOpenProcess(t *testing.T) {
 	defer cmd.Process.Kill()
 
 	pid := uint(cmd.Process.Pid)
-	p, err := OpenProcess(pid)
+	p, err := memaccess.OpenProcess(pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +51,7 @@ func TestSearchInOtherProcess(t *testing.T) {
 	}
 
 	pid := uint(cmd.Process.Pid)
-	p, err := OpenProcess(pid)
+	p, err := memaccess.OpenProcess(pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +71,7 @@ func TestSearchInOtherProcess(t *testing.T) {
 func testFindString(t *testing.T) {
 	pid := uint(os.Getpid())
 
-	p, err := OpenProcess(pid)
+	p, err := memaccess.OpenProcess(pid)
 	if err != nil {
 		t.Fatal(err)
 	}

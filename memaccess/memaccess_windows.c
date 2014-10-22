@@ -1,6 +1,7 @@
-#include "memory_access.h"
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "memaccess.h"
 
 inline static BOOL is_readable(MEMORY_BASIC_INFORMATION info);
 static response_t *response_create();

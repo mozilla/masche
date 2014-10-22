@@ -1,8 +1,8 @@
 // +build windows darwin
 
-package memsearch
+package memaccess
 
-// #include "memory_access.h"
+// #include "memaccess.h"
 // #cgo CFLAGS: -std=c99
 import "C"
 
