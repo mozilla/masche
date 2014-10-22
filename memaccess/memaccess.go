@@ -21,6 +21,11 @@ type WalkFunc func(address uintptr, buf []byte) (keepSearching bool)
 var emptyRegion MemoryRegion
 
 //TODO(alcuadrado): Add documentation.
+func OpenProcess(pid uint) (Process, error) {
+	return openProcessImpl(pid)
+}
+
+//TODO(alcuadrado): Add documentation.
 func WalkMemory(p Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error, softerrors []error) {
 	region, harderror := p.NextReadableMemoryRegion(startAddress)
 	if harderror != nil {

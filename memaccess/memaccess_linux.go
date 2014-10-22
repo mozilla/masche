@@ -20,7 +20,7 @@ type mapInfo struct {
 	end   uintptr
 }
 
-func OpenProcess(pid uint) (Process, error) {
+func openProcessImpl(pid uint) (Process, error) {
 	var result process
 	result.pid = pid
 	result.mapsFilepath = filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")

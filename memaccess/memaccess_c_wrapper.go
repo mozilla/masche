@@ -16,7 +16,7 @@ type process struct {
 	pid  uint
 }
 
-func OpenProcess(pid uint) (Process, error) {
+func openProcessImpl(pid uint) (Process, error) {
 	var result process
 
 	resp := C.open_process_handle(C.pid_tt(pid), &result.hndl)
