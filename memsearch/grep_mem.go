@@ -1,8 +1,8 @@
 package memsearch
 
 import (
-	"../memaccess"
 	"bytes"
+	"github.com/mozilla/masche/memaccess"
 )
 
 // FindNext finds for the first occurrence of needle in the memory of Process ph after the given address.

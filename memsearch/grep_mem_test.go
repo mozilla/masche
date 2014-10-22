@@ -1,7 +1,7 @@
 package memsearch
 
 import (
-	"../memaccess"
+	"github.com/mozilla/masche/memaccess"
 	"os"
 	"os/exec"
 	"testing"
