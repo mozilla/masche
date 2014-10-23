@@ -1,28 +1,28 @@
 // This packages contains an interface for accessing other processes' memory.
-//TODO(alcuadrado): Add documentation about error handling
 package memaccess
 
-//TODO(alcuadrado): Add documentation.
-func OpenProcess(pid uint) (ProcessMemoryReader, error) {
-	return openProcessImpl(pid)
+// Creates a new ProcessMemoryReader for a given process.
+func NewProcessMemoryReader(pid uint) (reader ProcessMemoryReader, harderror error, softerrors []error) {
+	return newProcessMemoryReaderImpl(pid)
 }
 
 // This interface is used to access a process memory. For getting an instance
-// of a type implementing it you must call OpenProcess function defined below.
+// of a type implementing it you must call NewProcessMemoryReader function.
 type ProcessMemoryReader interface {
 	// Frees the resources attached to this interface.
-	Close() error
+	Close() (harderror error, softerrors []error)
 
 	// Returns a memory region containing address, or the next readable region
 	// after address in case addresss is not in a readable region.
 	//
 	// If there aren't more regions available the special value
 	// NoRegionAvailable is returned.
-	NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
+	NextReadableMemoryRegion(address uintptr) (region MemoryRegion, harderror error, softerrors []error)
 
-	//TODO(alcuadrado): Add a detailed doc about how this works, specially in
-	// corner cases.
-	CopyMemory(address uintptr, buffer []byte) error
+	// Fills the entire buffer with memory from the process starting in address (in the process address space).
+	// If there is not enough memory to read it returns a hard error. Note that this is not the only hard error it may
+	// return though.
+	CopyMemory(address uintptr, buffer []byte) (harderror error, softerrors []error)
 }
 
 // This struct represents a region of readable contiguos memory of a process.
@@ -32,8 +32,8 @@ type ProcessMemoryReader interface {
 //
 // Note that this region is not necessary equivalent to the OS's region, if any.
 type MemoryRegion struct {
-	address uintptr
-	size    uint
+	Address uintptr
+	Size    uint
 }
 
 // A centinel value indicating that there is no more regions available.
@@ -47,10 +47,11 @@ type WalkFunc func(address uintptr, buf []byte) (keepSearching bool)
 // reading upto bufSize bytes into a buffer, and calling walkFn with the buffer
 // and the start address of the memory in the buffer. If walkFn returns false
 // WalkMemory stop reading the memory.
-//
-// TODO(alcuadrado): Add documentation about error handling and retries.
-func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error, softerrors []error) {
-	region, harderror := reader.NextReadableMemoryRegion(startAddress)
+func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error,
+	softerrors []error) {
+
+	var region MemoryRegion
+	region, harderror, softerrors = reader.NextReadableMemoryRegion(startAddress)
 	if harderror != nil {
 		return
 	}
@@ -59,16 +60,24 @@ func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, 
 
 	buf := make([]byte, bufSize)
 	retries := max_retries
-	softerrors = make([]error, 0)
 
 	for region != NoRegionAvailable {
-		keepWalking, addr, err := walkRegion(reader, region, buf, walkFn)
+
+		keepWalking, addr, err, serrs := walkRegion(reader, region, buf, walkFn)
+		softerrors = append(softerrors, serrs...)
+
 		if err != nil && retries > 0 {
 			// An error occurred: retry using the nearest region to the address that failed.
 			retries--
-			region, harderror = reader.NextReadableMemoryRegion(addr)
+			region, harderror, serrs = reader.NextReadableMemoryRegion(addr)
+			softerrors = append(softerrors, serrs...)
 			if harderror != nil {
 				return
+			}
+
+			// if some chunk of this new region was already read we don't want to read it again.
+			if region.Address < addr {
+				region.Address = addr
 			}
 
 			continue
@@ -79,7 +88,8 @@ func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, 
 			return
 		}
 
-		region, harderror = reader.NextReadableMemoryRegion(region.address + uintptr(region.size))
+		region, harderror, serrs = reader.NextReadableMemoryRegion(region.Address + uintptr(region.Size))
+		softerrors = append(softerrors, serrs...)
 		if harderror != nil {
 			return
 		}
@@ -88,41 +98,41 @@ func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, 
 	return
 }
 
-//TODO(mvanotti): change the multiple return value to a specific error with an address field.
-//TODO(mvanotti): Add documentation.
-//TODO(alcuadrado): Clean this code.
-func walkRegion(reader ProcessMemoryReader, region MemoryRegion, buf []byte, walkFn WalkFunc) (bool, uintptr, error) {
-	bufSz := uint(len(buf))
-	address := region.address
+// This function walks through a single memory region calling walkFunc with a given buffer. It always fills as much of
+// the buffer as possible before calling walkFunc, but it never calls it with overlaped memory sections.
+//
+// If the buffer cannot be filled a hard error is returned with the starting address of the chunk of memory that could
+// not be read. If no harderror is returned errorAddress must be ignored.
+//
+// If any of the calls to walkFn returns false, this function inmediatly returns, with keepWalking set to false and no
+// hard error.
+func walkRegion(reader ProcessMemoryReader, region MemoryRegion, buf []byte, walkFn WalkFunc) (keepWalking bool,
+	errorAddress uintptr, harderror error, softerrors []error) {
 
-	// We divide the memory region in blocks of bufSz/2 bytes, and for each block (except the last one), we read bufSz bytes.
-	// We leave the last block out, so we can later read the last bufSz bytes starting from te end (reading the last block and the remaining)
-	// For example, if we have a region with size 17 and bufSize of size 8, we divide it in regions of 4 bytes:
-	// 0-3, 4-7, 8-11, 12-15 and the reamining byte is left out: 16
-	// we read 0 to 7 (8 bytes), 4 to 11 (8 bytes), and 8 to 15 (8 bytes).
-	// after that, we read the last 8 bytes: 9 to 16.
-	// in this case, i will take values 0, 1 and 2
-	for i := uint(0); i < region.size/(bufSz/2)-1; i, address = i+1, address+uintptr(bufSz/2) {
-		err := reader.CopyMemory(address, buf)
+	softerrors = make([]error, 0)
+	keepWalking = true
+
+	remaningBytes := uintptr(region.Size)
+	for addr := region.Address; remaningBytes > 0; addr += uintptr(len(buf)) {
+		err, serrs := reader.CopyMemory(addr, buf)
+		softerrors = append(softerrors, serrs...)
+
 		if err != nil {
-			return false, address, err
+			harderror = err
+			errorAddress = addr
+			return
 		}
-		if !walkFn(address, buf) {
-			return false, 0, nil
+
+		keepWalking = walkFn(addr, buf)
+		if !keepWalking {
+			return
+		}
+
+		remaningBytes -= uintptr(len(buf))
+		if remaningBytes < uintptr(len(buf)) {
+			buf = buf[:remaningBytes]
 		}
 	}
 
-	// Get the remaining part:
-	// We have at most bufSize/2 bytes to walk, so we copy the last bufSize bytes to get the window between the last two chunks.
-	if region.size%(bufSz/2) != 0 {
-		address = region.address + uintptr(region.size-bufSz)
-		err := reader.CopyMemory(address, buf)
-		if err != nil {
-			return false, address, err
-		}
-
-		return walkFn(address, buf), 0, nil
-	}
-
-	return true, 0, nil
+	return
 }

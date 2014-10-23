@@ -7,6 +7,7 @@ package main
 
 import (
 	"flag"
+	"github.com/mozilla/masche/memaccess"
 	"github.com/mozilla/masche/memsearch"
 	"log"
 )
@@ -22,14 +23,15 @@ var (
 func main() {
 	flag.Parse()
 
-	p, err := memsearch.OpenProcess(uint(*pid))
+	reader, err, _ := memaccess.NewProcessMemoryReader(uint(*pid))
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer reader.Close()
 
 	if *prnt {
 		buf := make([]byte, *size)
-		err := p.CopyMemory(uintptr(*addr), buf)
+		err, _ := reader.CopyMemory(uintptr(*addr), buf)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -37,7 +39,8 @@ func main() {
 		return
 	}
 
-	address, found, err := memsearch.FindNext(p, uintptr(*addr), []byte(*needle))
+	found, address, err, _ := memsearch.FindNext(reader,
+		uintptr(*addr), []byte(*needle))
 	if err != nil {
 		log.Fatal(err)
 	} else if found {

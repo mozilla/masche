@@ -168,6 +168,14 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
             }
         } else {
             if (!(*region_available)) {
+
+                // Sometimes a previous region is returned, we add 1 and keep
+                // reading
+                if (addr + size <= address) {
+                    addr += size + 1;
+                    continue;
+                }
+
                 *region_available = true;
                 memory_region->start_address = addr;
                 memory_region->length = size;

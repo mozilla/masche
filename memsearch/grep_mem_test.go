@@ -1,6 +1,7 @@
 package memsearch
 
 import (
+	"fmt"
 	"github.com/mozilla/masche/memaccess"
 	"os"
 	"os/exec"
@@ -15,19 +16,12 @@ var buffersToFind = [][]byte{
 	[]byte{0xb, 0xe, 0xb, 0xe, 0xf, 0xe, 0x0},
 }
 
-func TestOpenProcess(t *testing.T) {
-	cmd := exec.Command("../test/tools/test.exe")
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	defer cmd.Process.Kill()
+var notPresent = []byte("this string should generate a list of bytes not present in the process")
 
-	pid := uint(cmd.Process.Pid)
-	p, err := memaccess.OpenProcess(pid)
-	if err != nil {
-		t.Fatal(err)
+func printSoftErrors(softerrors []error) {
+	for _, err := range softerrors {
+		fmt.Fprintln(os.Stderr, err.Error())
 	}
-	defer p.Close()
 }
 
 func TestSearchInOtherProcess(t *testing.T) {
@@ -51,14 +45,16 @@ func TestSearchInOtherProcess(t *testing.T) {
 	}
 
 	pid := uint(cmd.Process.Pid)
-	p, err := memaccess.OpenProcess(pid)
+	reader, err, softerrors := memaccess.NewProcessMemoryReader(pid)
+	printSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer p.Close()
+	defer reader.Close()
 
 	for i, buf := range buffersToFind {
-		_, found, err := FindNext(p, 0, buf)
+		found, _, err, softerrors := FindNext(reader, 0, buf)
+		printSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
 		} else if !found {
@@ -66,18 +62,29 @@ func TestSearchInOtherProcess(t *testing.T) {
 		}
 	}
 
+	// This must not be present
+	found, _, err, softerrors := FindNext(reader, 0, notPresent)
+	printSoftErrors(softerrors)
+	if err != nil {
+		t.Fatal(err)
+	} else if found {
+		t.Fatalf("memoryGrep failed, it found a sequense of bytes that it shouldn't")
+	}
+
 }
 
 func testFindString(t *testing.T) {
 	pid := uint(os.Getpid())
 
-	p, err := memaccess.OpenProcess(pid)
+	reader, err, softerrors := memaccess.NewProcessMemoryReader(pid)
+	printSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer p.Close()
+	defer reader.Close()
 
-	_, found, err := FindNext(p, 0, needle)
+	found, _, err, softerrors := FindNext(reader, 0, needle)
+	printSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
 	} else if !found {
