@@ -10,7 +10,6 @@ type MemoryRegion struct {
 type Process interface {
 	Close() error
 	NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
-	ReadMemory(address uintptr, size uint) ([]byte, error)
 	CopyMemory(address uintptr, buffer []byte) error
 }
 

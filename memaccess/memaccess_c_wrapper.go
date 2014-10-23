@@ -57,10 +57,6 @@ func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
 	return MemoryRegion{uintptr(region.start_address), uint(region.length)}, nil
 }
 
-func (p process) ReadMemory(address uintptr, size uint) ([]byte, error) {
-	return nil, nil
-}
-
 func (p process) CopyMemory(address uintptr, buffer []byte) error {
 	buf := unsafe.Pointer(&buffer[0])
 

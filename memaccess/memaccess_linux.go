@@ -120,15 +120,6 @@ func getMappedAddresses(mapsFile *os.File, path string) ([]mapInfo, error) {
 	return res, nil
 }
 
-func (p process) ReadMemory(address uintptr, size uint) ([]byte, error) {
-	buffer := make([]byte, size)
-	err := p.CopyMemory(address, buffer)
-	if err != nil {
-		return nil, err
-	}
-	return buffer, nil
-}
-
 func (p process) CopyMemory(address uintptr, buffer []byte) error {
 	mem, err := os.Open(p.memFilepath)
 	if err != nil {
