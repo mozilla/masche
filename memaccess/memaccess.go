@@ -1,30 +1,54 @@
+// This packages contains an interface for accessing other processes' memory.
+//TODO(alcuadrado): Add documentation about error handling
 package memaccess
-
-//TODO(alcuadrado): Add documentation.
-type MemoryRegion struct {
-	address uintptr
-	size    uint
-}
-
-//TODO(alcuadrado): Add documentation.
-type Process interface {
-	Close() error
-	NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
-	CopyMemory(address uintptr, buffer []byte) error
-}
-
-//TODO(alcuadrado): Add documentation.
-type WalkFunc func(address uintptr, buf []byte) (keepSearching bool)
-
-//TODO(alcuadrado): Add documentation.
-var emptyRegion MemoryRegion
 
 //TODO(alcuadrado): Add documentation.
 func OpenProcess(pid uint) (Process, error) {
 	return openProcessImpl(pid)
 }
 
-//TODO(alcuadrado): Add documentation.
+// This interface is used to access a process memory. For getting an instance
+// of a type implementing it you must call OpenProcess function defined below.
+type Process interface {
+	// Frees the resources attached to this interface.
+	Close() error
+
+	// Returns a memory region containing address, or the next readable region
+	// after address in case addresss is not in a readable region.
+	//
+	// If there aren't more regions available the special value
+	// NoRegionAvailable is returned.
+	NextReadableMemoryRegion(address uintptr) (MemoryRegion, error)
+
+	//TODO(alcuadrado): Add a detailed doc about how this works, specially in
+	// corner cases.
+	CopyMemory(address uintptr, buffer []byte) error
+}
+
+// This struct represents a region of readable contiguos memory of a process.
+//
+// No readable memory can be available right next to this region, it's maximal
+// in its upper bound.
+//
+// Note that this region is not necessary equivalent to the OS's region, if any.
+type MemoryRegion struct {
+	address uintptr
+	size    uint
+}
+
+// A centinel value indicating that there is no more regions available.
+var NoRegionAvailable MemoryRegion
+
+// This type represents a function used for walking through the memory, see
+// WalkMemory for more details.
+type WalkFunc func(address uintptr, buf []byte) (keepSearching bool)
+
+// WalkMemory reads all the memory of a process starting at a given address
+// reading upto bufSize bytes into a buffer, and calling walkFn with the buffer
+// and the start address of the memory in the buffer. If walkFn returns false
+// WalkMemory stop reading the memory.
+//
+// TODO(alcuadrado): Add documentation about error handling and retries.
 func WalkMemory(p Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error, softerrors []error) {
 	region, harderror := p.NextReadableMemoryRegion(startAddress)
 	if harderror != nil {
@@ -37,7 +61,7 @@ func WalkMemory(p Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) 
 	retries := max_retries
 	softerrors = make([]error, 0)
 
-	for region != emptyRegion {
+	for region != NoRegionAvailable {
 		keepWalking, addr, err := walkRegion(p, region, buf, walkFn)
 		if err != nil && retries > 0 {
 			// An error occurred: retry using the nearest region to the address that failed.
@@ -66,6 +90,7 @@ func WalkMemory(p Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) 
 
 //TODO(mvanotti): change the multiple return value to a specific error with an address field.
 //TODO(mvanotti): Add documentation.
+//TODO(alcuadrado): Clean this code.
 func walkRegion(p Process, region MemoryRegion, buf []byte, walkFn WalkFunc) (bool, uintptr, error) {
 	bufSz := uint(len(buf))
 	address := region.address
