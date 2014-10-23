@@ -120,7 +120,7 @@ response_t *close_process_handle(process_handle_t process_handle);
 
 /**
  * Returns a memory region containing address, or the next readable region
- * after address in case it's not readable.
+ * after address in case addresss is not in a readable region.
  *
  * If there is no region to return region_available will be false. Otherwise
  * it will be true, and the region will be returned in memory_region.
