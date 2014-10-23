@@ -5,11 +5,11 @@ import (
 	"github.com/mozilla/masche/memaccess"
 )
 
-// FindNext finds for the first occurrence of needle in the memory of Process ph after the given address.
-func FindNext(ph memaccess.Process, address uintptr, needle []byte) (uintptr, bool, error) {
+// FindNext finds for the first occurrence of needle in the memory of ProcessMemoryReader reader after the given address.
+func FindNext(reader memaccess.ProcessMemoryReader, address uintptr, needle []byte) (uintptr, bool, error) {
 	addr := uintptr(0)
 	found := false
-	hard, _ := memaccess.WalkMemory(ph, address, 4096,
+	hard, _ := memaccess.WalkMemory(reader, address, 4096,
 		func(address uintptr, buf []byte) (keepSearching bool) {
 			i := bytes.Index(buf, needle)
 			if i == -1 {

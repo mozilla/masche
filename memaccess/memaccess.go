@@ -3,13 +3,13 @@
 package memaccess
 
 //TODO(alcuadrado): Add documentation.
-func OpenProcess(pid uint) (Process, error) {
+func OpenProcess(pid uint) (ProcessMemoryReader, error) {
 	return openProcessImpl(pid)
 }
 
 // This interface is used to access a process memory. For getting an instance
 // of a type implementing it you must call OpenProcess function defined below.
-type Process interface {
+type ProcessMemoryReader interface {
 	// Frees the resources attached to this interface.
 	Close() error
 
@@ -49,8 +49,8 @@ type WalkFunc func(address uintptr, buf []byte) (keepSearching bool)
 // WalkMemory stop reading the memory.
 //
 // TODO(alcuadrado): Add documentation about error handling and retries.
-func WalkMemory(p Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error, softerrors []error) {
-	region, harderror := p.NextReadableMemoryRegion(startAddress)
+func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error, softerrors []error) {
+	region, harderror := reader.NextReadableMemoryRegion(startAddress)
 	if harderror != nil {
 		return
 	}
@@ -62,11 +62,11 @@ func WalkMemory(p Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) 
 	softerrors = make([]error, 0)
 
 	for region != NoRegionAvailable {
-		keepWalking, addr, err := walkRegion(p, region, buf, walkFn)
+		keepWalking, addr, err := walkRegion(reader, region, buf, walkFn)
 		if err != nil && retries > 0 {
 			// An error occurred: retry using the nearest region to the address that failed.
 			retries--
-			region, harderror = p.NextReadableMemoryRegion(addr)
+			region, harderror = reader.NextReadableMemoryRegion(addr)
 			if harderror != nil {
 				return
 			}
@@ -79,7 +79,7 @@ func WalkMemory(p Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) 
 			return
 		}
 
-		region, harderror = p.NextReadableMemoryRegion(region.address + uintptr(region.size))
+		region, harderror = reader.NextReadableMemoryRegion(region.address + uintptr(region.size))
 		if harderror != nil {
 			return
 		}
@@ -91,7 +91,7 @@ func WalkMemory(p Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) 
 //TODO(mvanotti): change the multiple return value to a specific error with an address field.
 //TODO(mvanotti): Add documentation.
 //TODO(alcuadrado): Clean this code.
-func walkRegion(p Process, region MemoryRegion, buf []byte, walkFn WalkFunc) (bool, uintptr, error) {
+func walkRegion(reader ProcessMemoryReader, region MemoryRegion, buf []byte, walkFn WalkFunc) (bool, uintptr, error) {
 	bufSz := uint(len(buf))
 	address := region.address
 
@@ -103,7 +103,7 @@ func walkRegion(p Process, region MemoryRegion, buf []byte, walkFn WalkFunc) (bo
 	// after that, we read the last 8 bytes: 9 to 16.
 	// in this case, i will take values 0, 1 and 2
 	for i := uint(0); i < region.size/(bufSz/2)-1; i, address = i+1, address+uintptr(bufSz/2) {
-		err := p.CopyMemory(address, buf)
+		err := reader.CopyMemory(address, buf)
 		if err != nil {
 			return false, address, err
 		}
@@ -116,7 +116,7 @@ func walkRegion(p Process, region MemoryRegion, buf []byte, walkFn WalkFunc) (bo
 	// We have at most bufSize/2 bytes to walk, so we copy the last bufSize bytes to get the window between the last two chunks.
 	if region.size%(bufSz/2) != 0 {
 		address = region.address + uintptr(region.size-bufSz)
-		err := p.CopyMemory(address, buf)
+		err := reader.CopyMemory(address, buf)
 		if err != nil {
 			return false, address, err
 		}
