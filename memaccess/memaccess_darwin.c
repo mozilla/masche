@@ -157,7 +157,7 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
             char *description = NULL;
             asprintf(
                 &description,
-                "Memory unreadable: %llx-%llx",
+                "memory unreadable: %llx-%llx",
                 addr,
                 addr + size - 1
             );
@@ -172,6 +172,17 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
                 // Sometimes a previous region is returned, we add 1 and keep
                 // reading
                 if (addr + size <= address) {
+                    char *description = NULL;
+                    asprintf(
+                        &description,
+                        "wrong region obtained, expected it to contain %llx, "
+                        "but got: %llx-%llx",
+                        address,
+                        addr,
+                        addr + size - 1
+                    );
+                    response_add_soft_error(response, -1, description);
+
                     addr += size + 1;
                     continue;
                 }
