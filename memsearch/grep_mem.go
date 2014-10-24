@@ -3,6 +3,7 @@ package memsearch
 import (
 	"bytes"
 	"github.com/mozilla/masche/memaccess"
+	"regexp"
 )
 
 // Finds for the first occurrence of needle in the ProcessMemoryReader starting at a given address.
@@ -29,6 +30,28 @@ func FindNext(reader memaccess.ProcessMemoryReader, address uintptr, needle []by
 			}
 
 			foundAddress = address + uintptr(i)
+			found = true
+			return false
+		})
+
+	return
+}
+
+func FindNextMatch(reader memaccess.ProcessMemoryReader, address uintptr, r *regexp.Regexp) (found bool, foundAddress uintptr,
+	harderror error, softerrors []error) {
+
+	const buffer_size = uint(4096)
+
+	foundAddress = uintptr(0)
+	found = false
+	harderror, softerrors = memaccess.WalkMemory(reader, address, buffer_size,
+		func(address uintptr, buf []byte) (keepSearching bool) {
+			loc := r.FindIndex(buf)
+			if loc == nil {
+				return true
+			}
+
+			foundAddress = address + uintptr(loc[0])
 			found = true
 			return false
 		})

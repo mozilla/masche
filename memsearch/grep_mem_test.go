@@ -5,6 +5,7 @@ import (
 	"github.com/mozilla/masche/memaccess"
 	"os"
 	"os/exec"
+	"regexp"
 	"testing"
 )
 
@@ -17,6 +18,18 @@ var buffersToFind = [][]byte{
 }
 
 var notPresent = []byte("this string should generate a list of bytes not present in the process")
+
+var regexpToMatch = []string{
+	"Un dia vi una vaca vestida de uniforme",
+	"Un dia vi.*",
+	"Un.*vestida de uniforme",
+	"Un[a-z\\ ]*vestida de",
+}
+
+var regexpToNotMatch = []string{
+	"Un dia vi dos vacas vestidas de uniforme",
+	"Un dia vi.*sin uniforme",
+}
 
 func printSoftErrors(softerrors []error) {
 	for _, err := range softerrors {
@@ -85,5 +98,53 @@ func TestSearchInOtherProcess(t *testing.T) {
 		t.Fatal(err)
 	} else if found {
 		t.Fatalf("memoryGrep failed, it found a sequense of bytes that it shouldn't")
+	}
+}
+
+func TestRegexpSearchInOtherProcess(t *testing.T) {
+	//TODO(mvanotti): Right now the command is hardcoded. We should decide how to fix this.
+	cmd, err := launchProcess("../test/tools/test.exe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeProcess(cmd)
+
+	pid := uint(cmd.Process.Pid)
+	reader, err, softerrors := memaccess.NewProcessMemoryReader(pid)
+	printSoftErrors(softerrors)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+
+	for i, str := range regexpToMatch {
+		r, err := regexp.Compile(str)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		found, _, err, softerrors := FindNextMatch(reader, 0, r)
+		printSoftErrors(softerrors)
+		if err != nil {
+			t.Fatal(err)
+		} else if !found {
+			t.Fatalf("memoryGrep failed for case %d, the following regexp should be found: %s", i, str)
+		}
+	}
+
+	// These must not match
+	for i, str := range regexpToNotMatch {
+		r, err := regexp.Compile(str)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		found, _, err, softerrors := FindNextMatch(reader, 0, r)
+		printSoftErrors(softerrors)
+		if err != nil {
+			t.Fatal(err)
+		} else if found {
+			t.Fatalf("memoryGrep failed for case %d, the following regexp shouldnt be found: %s", i, str)
+		}
 	}
 }
