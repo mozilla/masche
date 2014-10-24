@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 int main(void) {
+    char *string_regexp = "Un dia vi una vaca vestida de uniforme";
     char *in_data_segment = "\xC\xA\xF\xE";
 
     char in_stack[] = {0xd, 0xe, 0xa, 0xd, 0xb, 0xe, 0xe, 0xf};
@@ -20,7 +21,8 @@ int main(void) {
     // By writing to stdout and flushing we are letting the parent process know that we have initialized everything.
     printf("In Data Segment: %p\n"
            "In Stack: %p\n"
-           "In Heap: %p\n", in_data_segment, in_stack, in_heap);
+           "In Heap: %p\n"
+           "Regexp String: %p\n", in_data_segment, in_stack, in_heap, string_regexp);
     fflush(stdout);
 
     for (;;) sleep(1);
