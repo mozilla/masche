@@ -10,14 +10,16 @@ import (
 	"github.com/mozilla/masche/memaccess"
 	"github.com/mozilla/masche/memsearch"
 	"log"
+	"regexp"
 )
 
 var (
-	pid    = flag.Int("pid", 0, "Process id to analyze")
-	prnt   = flag.Bool("print", false, "Print information")
-	needle = flag.String("s", "Find This!", "String to search for")
-	addr   = flag.Int("addr", 0x0, "Process Address to read")
-	size   = flag.Int("n", 4, "Amount of bytes to read")
+	pid      = flag.Int("pid", 0, "Process id to analyze")
+	prnt     = flag.Bool("print", false, "Print information")
+	needle   = flag.String("s", "Find This!", "String to search for")
+	addr     = flag.Int("addr", 0x0, "Process Address to read")
+	size     = flag.Int("n", 4, "Amount of bytes to read")
+	isRegexp = flag.Bool("r", false, "Assume needle is a regexp")
 )
 
 func main() {
@@ -36,6 +38,22 @@ func main() {
 			log.Fatal(err)
 		}
 		log.Println(string(buf))
+		return
+	}
+
+	if *isRegexp {
+		r, err := regexp.Compile(*needle)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		found, address, err, _ := memsearch.FindNextMatch(reader,
+			uintptr(*addr), r)
+		if err != nil {
+			log.Fatal(err)
+		} else if found {
+			log.Printf("Found in address: %x\n", address)
+		}
 		return
 	}
 
