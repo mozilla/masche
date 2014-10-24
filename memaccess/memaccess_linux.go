@@ -20,53 +20,56 @@ type mapInfo struct {
 	end   uintptr
 }
 
-func newProcessMemoryReaderImpl(pid uint) (Process, error) {
+func newProcessMemoryReaderImpl(pid uint) (process, error, []error) {
 	var result process
 	result.pid = pid
 	result.mapsFilepath = filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
 	result.memFilepath = filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
 	// trying to open the maps file, only to see if gives an error
-	f, err := os.Open(result.mapsFilepath)
-	if err != nil {
-		return nil, err
+	f, harderror := os.Open(result.mapsFilepath)
+	softerrors := make([]error, 0)
+	if harderror != nil {
+		return process{}, harderror, softerrors
 	}
 	f.Close()
-	return result, nil
+	return result, nil, softerrors
 }
 
-func (p process) Close() error {
-	return nil
+func (p process) Close() (error, []error) {
+	return nil, make([]error, 0)
 }
 
 // NextReadableMemoryRegion should return a MemoryRegion with address inside or,
 // if that's impossible, the next readable MemoryRegion
-func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error) {
-	mapsFile, err := os.Open(p.mapsFilepath)
-	if err != nil {
-		return MemoryRegion{}, err
+func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error, []error) {
+	mapsFile, harderror := os.Open(p.mapsFilepath)
+	softerrors := make([]error, 0)
+	if harderror != nil {
+		return MemoryRegion{}, harderror, softerrors
 	}
 	defer mapsFile.Close()
 
-	path, err := pathByPID(p.pid)
-	if err != nil {
-		return MemoryRegion{}, err
+	path, harderror := pathByPID(p.pid)
+	if harderror != nil {
+		return MemoryRegion{}, harderror, softerrors
 	}
 
-	mappedAddresses, err := getMappedAddresses(mapsFile, path)
-	if err != nil {
-		return MemoryRegion{}, err
+	mappedAddresses, harderror := getMappedAddresses(mapsFile, path)
+	if harderror != nil {
+		return MemoryRegion{}, harderror, softerrors
 	}
 
-	mappedRegion, err := nextReadableMappedRegion(address, mappedAddresses)
-	if err != nil {
-		return MemoryRegion{}, err
+	mappedRegion, harderror := nextReadableMappedRegion(address, mappedAddresses)
+	//TODO: ignore non readable mapped regions and add a softerror
+	if harderror != nil {
+		return MemoryRegion{}, harderror, softerrors
 	}
 
 	if mappedRegion.start != 0 {
 		size := uint(mappedRegion.end - mappedRegion.start)
-		return MemoryRegion{mappedRegion.start, size}, nil
+		return MemoryRegion{mappedRegion.start, size}, nil, softerrors
 	}
-	return MemoryRegion{}, nil
+	return MemoryRegion{}, nil, softerrors
 }
 
 func nextReadableMappedRegion(address uintptr, mappedAddresses []mapInfo) (mapInfo, error) {
@@ -120,18 +123,22 @@ func getMappedAddresses(mapsFile *os.File, path string) ([]mapInfo, error) {
 	return res, nil
 }
 
-func (p process) CopyMemory(address uintptr, buffer []byte) error {
-	mem, err := os.Open(p.memFilepath)
-	if err != nil {
+func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
+	mem, harderror := os.Open(p.memFilepath)
+	softerrors := make([]error, 0)
+	if harderror != nil {
 		//TODO(laski): add address to error string
-		return err
+		return harderror, softerrors
 	}
 	defer mem.Close()
-	_, err = mem.ReadAt(buffer, int64(address))
-	if err != nil {
-		return err
+	bytes_read, harderror := mem.ReadAt(buffer, int64(address))
+	if bytes_read != len(buffer) {
+		return fmt.Errorf("Coul not read the entire buffer"), softerrors
 	}
-	return nil
+	if harderror != nil {
+		return harderror, softerrors
+	}
+	return nil, softerrors
 }
 
 func nameByPID(pid uint) (string, error) {

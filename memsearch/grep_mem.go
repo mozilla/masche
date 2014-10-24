@@ -33,7 +33,6 @@ func FindNext(reader memaccess.ProcessMemoryReader, address uintptr, needle []by
 			found = true
 			return false
 		})
-
 	return
 }
 
