@@ -24,25 +24,41 @@ func printSoftErrors(softerrors []error) {
 	}
 }
 
-func TestSearchInOtherProcess(t *testing.T) {
-	//TODO(mvanotti): Right now the command is hardcoded. We should decide how to fix this.
-	cmd := exec.Command("../test/tools/test.exe")
+// launchProcess starts a process and waits until it writes something to stdout: that way we know it has been initialized.
+// the process launched should write to stdout once it has been fully initialized.
+func launchProcess(file string) (*exec.Cmd, error) {
+	cmd := exec.Command(file)
 
 	childout, err := cmd.StdoutPipe()
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	defer childout.Close()
 
 	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
-	defer cmd.Process.Kill()
 
 	// Wait until the process writes something to stdout, so we know it has initialized all its memory.
 	if read, err := childout.Read(make([]byte, 1)); err != nil || read != 1 {
+		closeProcess(cmd)
+		return nil, err
+	}
+
+	return cmd, nil
+}
+
+func closeProcess(cmd *exec.Cmd) {
+	cmd.Process.Kill()
+}
+
+func TestSearchInOtherProcess(t *testing.T) {
+	//TODO(mvanotti): Right now the command is hardcoded. We should decide how to fix this.
+	cmd, err := launchProcess("../test/tools/test.exe")
+	if err != nil {
 		t.Fatal(err)
 	}
+	defer closeProcess(cmd)
 
 	pid := uint(cmd.Process.Pid)
 	reader, err, softerrors := memaccess.NewProcessMemoryReader(pid)
@@ -69,25 +85,5 @@ func TestSearchInOtherProcess(t *testing.T) {
 		t.Fatal(err)
 	} else if found {
 		t.Fatalf("memoryGrep failed, it found a sequense of bytes that it shouldn't")
-	}
-
-}
-
-func testFindString(t *testing.T) {
-	pid := uint(os.Getpid())
-
-	reader, err, softerrors := memaccess.NewProcessMemoryReader(pid)
-	printSoftErrors(softerrors)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer reader.Close()
-
-	found, _, err, softerrors := FindNext(reader, 0, needle)
-	printSoftErrors(softerrors)
-	if err != nil {
-		t.Fatal(err)
-	} else if !found {
-		t.Fatalf("memoryGrep failed, searching for %s, should be True", needle)
 	}
 }
