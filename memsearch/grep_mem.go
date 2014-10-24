@@ -10,7 +10,7 @@ import (
 // If the needle is found the first argument will be true and the second one will contain it's address in the other
 // process' address space.
 //
-// TODO(alcuadrado): This doesn't support inter-region reads. Two buffers are needed for this.
+// TODO(alcuadrado): This doesn't support inter-buffer searches. Two buffers are needed for this.
 func FindNext(reader memaccess.ProcessMemoryReader, address uintptr, needle []byte) (found bool, foundAddress uintptr,
 	harderror error, softerrors []error) {
 
