@@ -169,8 +169,10 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
         } else {
             if (!(*region_available)) {
 
-                // Sometimes a previous region is returned, we add 1 and keep
-                // reading
+                // Sometimes a previous region is returned that doesn't contain,
+                // address. This would lead to an infinite loop while using
+                // the regions, getting every time the same one. To avoid this
+                // we ask for the region 1 byte after address.
                 if (addr + size <= address) {
                     char *description = NULL;
                     asprintf(
@@ -183,7 +185,7 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
                     );
                     response_add_soft_error(response, -1, description);
 
-                    addr += size + 1;
+                    addr = address + 1;
                     continue;
                 }
 
