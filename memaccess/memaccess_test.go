@@ -55,7 +55,8 @@ func TestManuallyWalk(t *testing.T) {
 		t.Fatal(err)
 	}
 	for region != NoRegionAvailable {
-		region, err, _ = reader.NextReadableMemoryRegion(region.Address + uintptr(region.Size))
+		region, err, softerrors = reader.NextReadableMemoryRegion(region.Address + uintptr(region.Size))
+		printSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
 		}
