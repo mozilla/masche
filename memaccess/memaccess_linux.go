@@ -127,10 +127,11 @@ func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
 	mem, harderror := os.Open(p.memFilepath)
 	softerrors := make([]error, 0)
 	if harderror != nil {
-		//TODO(laski): add address to error string
+		harderror := fmt.Errorf("Error while reading %d bytes starting at %x: %s", len(buffer), address, harderror)
 		return harderror, softerrors
 	}
 	defer mem.Close()
+
 	bytes_read, harderror := mem.ReadAt(buffer, int64(address))
 	if bytes_read != len(buffer) {
 		return fmt.Errorf("Coul not read the entire buffer"), softerrors
