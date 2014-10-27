@@ -125,11 +125,13 @@ func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
 	defer mem.Close()
 
 	bytes_read, harderror := mem.ReadAt(buffer, int64(address))
-	if bytes_read != len(buffer) {
-		return fmt.Errorf("Coul not read the entire buffer"), softerrors
-	}
 	if harderror != nil {
 		return harderror, softerrors
 	}
+
+	if bytes_read != len(buffer) {
+		return fmt.Errorf("Coul not read the entire buffer"), softerrors
+	}
+
 	return nil, softerrors
 }
