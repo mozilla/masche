@@ -62,14 +62,14 @@ func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error,
 	mappedRegion, harderror := nextReadableMappedRegion(address, mappedAddresses)
 	//TODO: ignore non readable mapped regions and add a softerror
 	if harderror != nil {
-		return MemoryRegion{}, harderror, softerrors
+		return NoRegionAvailable, harderror, softerrors
 	}
 
 	if mappedRegion.start != 0 {
 		size := uint(mappedRegion.end - mappedRegion.start)
 		return MemoryRegion{mappedRegion.start, size}, nil, softerrors
 	}
-	return MemoryRegion{}, nil, softerrors
+	return NoRegionAvailable, nil, softerrors
 }
 
 func nextReadableMappedRegion(address uintptr, mappedAddresses []mapInfo) (mapInfo, error) {
