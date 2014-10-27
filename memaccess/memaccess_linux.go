@@ -141,27 +141,6 @@ func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
 	return nil, softerrors
 }
 
-func nameByPID(pid uint) (string, error) {
-	// inside /proc/[pid]/stat is the name of the binary between parentheses as second word
-	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "stat")
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	scanner.Split(bufio.ScanWords)
-
-	scanner.Scan() // discard first word
-	scanner.Scan()
-
-	res := scanner.Text()
-	res = strings.TrimPrefix(res, "(")
-	res = strings.TrimSuffix(res, ")")
-
-	return res, nil
-}
-
 func pathByPID(pid uint) (string, error) {
 	// the file /proc/[pid]/exe is a link to the binary
 	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "exe")
@@ -179,13 +158,4 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
-}
-
-func areEqual(s1 []byte, s2 []byte) bool {
-	for index, _ := range s1 {
-		if s1[index] != s2[index] {
-			return false
-		}
-	}
-	return true
 }
