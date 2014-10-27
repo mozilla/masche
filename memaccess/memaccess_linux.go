@@ -49,12 +49,7 @@ func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error,
 	}
 	defer mapsFile.Close()
 
-	path, harderror := pathByPID(p.pid)
-	if harderror != nil {
-		return MemoryRegion{}, harderror, softerrors
-	}
-
-	mappedAddresses, harderror := getMappedAddresses(mapsFile, path)
+	mappedAddresses, harderror := getMappedAddresses(mapsFile)
 	if harderror != nil {
 		return MemoryRegion{}, harderror, softerrors
 	}
@@ -89,33 +84,30 @@ func nextReadableMappedRegion(address uintptr, mappedAddresses []mapInfo) (mapIn
 	return mapInfo{}, nil
 }
 
-func getMappedAddresses(mapsFile *os.File, path string) ([]mapInfo, error) {
+func getMappedAddresses(mapsFile *os.File) ([]mapInfo, error) {
 	res := make([]mapInfo, 0)
 	scanner := bufio.NewScanner(mapsFile)
-	goals := []string{"[heap]", "[stack]", path} // we want to look into the binary memory, its heap and its stack
 
 	for scanner.Scan() {
 		line := scanner.Text()
-
 		items := strings.Split(line, " ")
 		if len(items) <= 1 {
 			continue
 		}
-		if stringInSlice(items[len(items)-1], goals) {
-			fields := strings.Split(items[0], "-")
-			start64, err := strconv.ParseUint(fields[0], 16, 64)
-			if err != nil {
-				return nil, err
-			}
-			end64, err := strconv.ParseUint(fields[1], 16, 64)
-			if err != nil {
-				return nil, err
-			}
-			start := uintptr(start64)
-			end := uintptr(end64)
-			info := mapInfo{start: start, end: end}
-			res = append(res, info)
+
+		fields := strings.Split(items[0], "-")
+		start64, err := strconv.ParseUint(fields[0], 16, 64)
+		if err != nil {
+			return nil, err
 		}
+		end64, err := strconv.ParseUint(fields[1], 16, 64)
+		if err != nil {
+			return nil, err
+		}
+		start := uintptr(start64)
+		end := uintptr(end64)
+		info := mapInfo{start: start, end: end}
+		res = append(res, info)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
@@ -140,23 +132,4 @@ func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
 		return harderror, softerrors
 	}
 	return nil, softerrors
-}
-
-func pathByPID(pid uint) (string, error) {
-	// the file /proc/[pid]/exe is a link to the binary
-	path := filepath.Join("/proc", fmt.Sprintf("%d", pid), "exe")
-	res, err := os.Readlink(path)
-	if err != nil {
-		return "", err
-	}
-	return res, nil
-}
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if a == b {
-			return true
-		}
-	}
-	return false
 }
