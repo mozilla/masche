@@ -24,3 +24,7 @@ _testmain.go
 
 #ctags
 /tags
+
+#vagrant
+Vagrantfile
+.vagrant
