@@ -23,7 +23,7 @@ int main(void) {
            "In Stack: %p\n"
            "In Heap: %p\n"
            "Regexp String: %p\n", in_data_segment, in_stack, in_heap, string_regexp);
-    fflush(stdout);
+    fclose(stdout);
 
     for (;;) sleep(1);
 

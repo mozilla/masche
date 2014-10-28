@@ -3,9 +3,28 @@ package test
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 )
+
+func getTestCasePath() string {
+	//TODO: Right now the command is hardcoded. We should decide how to fix this.
+	dirPath, err := filepath.Abs("../test/tools")
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(-1)
+	}
+
+	if runtime.GOOS == "windows" {
+		return filepath.Join(dirPath, "test.exe")
+	}
+
+	return filepath.Join(dirPath, "test-"+runtime.GOOS)
+}
 
 func PrintSoftErrors(softerrors []error) {
 	for _, err := range softerrors {
@@ -13,20 +32,22 @@ func PrintSoftErrors(softerrors []error) {
 	}
 }
 
+// this method redirects the process's stdout to the test stdout
 func LaunchTestCase() (*exec.Cmd, error) {
-	//TODO: Right now the command is hardcoded. We should decide how to fix this.
-	cmd := exec.Command("../test/tools/test.exe")
+	cmd := exec.Command(getTestCasePath())
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err := cmd.Start()
 	return cmd, err
 }
 
 func LaunchTestCaseAndWaitForInitialization() (*exec.Cmd, error) {
-	//TODO: Right now the command is hardcoded. We should decide how to fix this.
-	return launchProcessAndWaitInitialization("../test/tools/test.exe")
+	return launchProcessAndWaitInitialization(getTestCasePath())
 }
 
-// starts a process and waits until it writes something to stdout: that way we know it has been initialized.
-// the process launched should write to stdout once it has been fully initialized.
+// starts a process and waits until it writes everythin to stdout: that way we know it has been initialized.
+// the process launched should close stdout once it has been fully initialized.
+// this method redirects the process's stdout to the test stdout
 func launchProcessAndWaitInitialization(file string) (*exec.Cmd, error) {
 	cmd := exec.Command(file)
 
@@ -40,11 +61,7 @@ func launchProcessAndWaitInitialization(file string) (*exec.Cmd, error) {
 		return nil, err
 	}
 
-	// Wait until the process writes something to stdout, so we know it has initialized all its memory.
-	if read, err := childout.Read(make([]byte, 1)); err != nil || read != 1 {
-		cmd.Process.Kill()
-		return nil, err
-	}
+	io.Copy(os.Stdout, childout)
 
 	return cmd, nil
 }
