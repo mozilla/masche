@@ -38,7 +38,7 @@ func (p process) Close() (error, []error) {
 }
 
 func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion, harderror error, softerrors []error) {
-	// fmt.Printf("\n\n\nNextReadableMemoryRegion %x\n", address)
+	fmt.Printf("NextReadableMemoryRegion %x\n", address)
 	softerrors = make([]error, 0)
 
 	mapsFile, harderror := os.Open(p.mapsFilepath)
