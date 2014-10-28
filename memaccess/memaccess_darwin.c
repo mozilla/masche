@@ -154,6 +154,10 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
         }
 
         if ((info.protection & VM_PROT_READ) != VM_PROT_READ) {
+            if (*region_available) {
+                return response;
+            }
+
             char *description = NULL;
             asprintf(
                 &description,
@@ -162,10 +166,6 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
                 addr + size - 1
             );
             response_add_soft_error(response, -1, description);
-
-            if (*region_available) {
-                return response;
-            }
         } else {
             if (!(*region_available)) {
 
