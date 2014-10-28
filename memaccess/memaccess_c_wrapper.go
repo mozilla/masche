@@ -119,11 +119,12 @@ func (p process) CopyMemory(address uintptr, buffer []byte) (harderror error, so
 	C.response_free(resp)
 
 	if harderror != nil {
+		harderror = fmt.Errorf("Error while copying %d bytes starting at %x: %s", n, address, harderror.Error())
 		return
 	}
 
 	if len(buffer) != int(bytesRead) {
-		harderror = fmt.Errorf("Coul not read the entire buffer")
+		harderror = fmt.Errorf("Could not copy %d bytes starting at %x, copyed %d", len(buffer), address, bytesRead)
 	}
 
 	return
