@@ -78,11 +78,11 @@ func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion,
 
 			// If we were already reading a region this will just finish it. We only report the softerror when we
 			// were actually trying to read it.
-			if region.Address == 0 {
+			if region.Address != 0 {
 				return region, nil, softerrors
 			}
 
-			softerrors = append(softerrors, fmt.Errorf("Unreadable memory %s - address %x", items[0], address))
+			softerrors = append(softerrors, fmt.Errorf("Unreadable memory %s", items[0]))
 			continue
 		}
 
