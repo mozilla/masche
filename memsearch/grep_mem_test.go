@@ -1,10 +1,8 @@
 package memsearch
 
 import (
-	"fmt"
 	"github.com/mozilla/masche/memaccess"
-	"os"
-	"os/exec"
+	"github.com/mozilla/masche/test"
 	"regexp"
 	"testing"
 )
@@ -31,51 +29,16 @@ var regexpToNotMatch = []string{
 	"Un dia vi.*sin uniforme",
 }
 
-func printSoftErrors(softerrors []error) {
-	for _, err := range softerrors {
-		fmt.Fprintln(os.Stderr, err.Error())
-	}
-}
-
-// launchProcess starts a process and waits until it writes something to stdout: that way we know it has been initialized.
-// the process launched should write to stdout once it has been fully initialized.
-func launchProcess(file string) (*exec.Cmd, error) {
-	cmd := exec.Command(file)
-
-	childout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-	defer childout.Close()
-
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-
-	// Wait until the process writes something to stdout, so we know it has initialized all its memory.
-	if read, err := childout.Read(make([]byte, 1)); err != nil || read != 1 {
-		closeProcess(cmd)
-		return nil, err
-	}
-
-	return cmd, nil
-}
-
-func closeProcess(cmd *exec.Cmd) {
-	cmd.Process.Kill()
-}
-
 func TestSearchInOtherProcess(t *testing.T) {
-	//TODO(mvanotti): Right now the command is hardcoded. We should decide how to fix this.
-	cmd, err := launchProcess("../test/tools/test.exe")
+	cmd, err := test.LaunchTestCaseAndWaitForInitialization()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer closeProcess(cmd)
+	defer cmd.Process.Kill()
 
 	pid := uint(cmd.Process.Pid)
 	reader, err, softerrors := memaccess.NewProcessMemoryReader(pid)
-	printSoftErrors(softerrors)
+	test.PrintSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +46,7 @@ func TestSearchInOtherProcess(t *testing.T) {
 
 	for i, buf := range buffersToFind {
 		found, _, err, softerrors := FindNext(reader, 0, buf)
-		printSoftErrors(softerrors)
+		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
 		} else if !found {
@@ -93,7 +56,7 @@ func TestSearchInOtherProcess(t *testing.T) {
 
 	// This must not be present
 	found, _, err, softerrors := FindNext(reader, 0, notPresent)
-	printSoftErrors(softerrors)
+	test.PrintSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
 	} else if found {
@@ -102,16 +65,15 @@ func TestSearchInOtherProcess(t *testing.T) {
 }
 
 func TestRegexpSearchInOtherProcess(t *testing.T) {
-	//TODO(mvanotti): Right now the command is hardcoded. We should decide how to fix this.
-	cmd, err := launchProcess("../test/tools/test.exe")
+	cmd, err := test.LaunchTestCaseAndWaitForInitialization()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer closeProcess(cmd)
+	defer cmd.Process.Kill()
 
 	pid := uint(cmd.Process.Pid)
 	reader, err, softerrors := memaccess.NewProcessMemoryReader(pid)
-	printSoftErrors(softerrors)
+	test.PrintSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +86,7 @@ func TestRegexpSearchInOtherProcess(t *testing.T) {
 		}
 
 		found, _, err, softerrors := FindNextMatch(reader, 0, r)
-		printSoftErrors(softerrors)
+		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
 		} else if !found {
@@ -140,7 +102,7 @@ func TestRegexpSearchInOtherProcess(t *testing.T) {
 		}
 
 		found, _, err, softerrors := FindNextMatch(reader, 0, r)
-		printSoftErrors(softerrors)
+		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
 		} else if found {
