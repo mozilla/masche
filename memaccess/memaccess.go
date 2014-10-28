@@ -89,7 +89,8 @@ func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, 
 			continue
 		} else if err != nil {
 			// we have exceeded our retries, mark the error as soft error and keep going.
-			softerrors = append(softerrors, err)
+			softerrors = append(softerrors, fmt.Errorf("Retries exceeded on reading %d bytes starting at %x: %s",
+				len(buf), addr, err.Error()))
 		} else if !keepWalking {
 			return
 		}
