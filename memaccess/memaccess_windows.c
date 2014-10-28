@@ -125,6 +125,7 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
             if (*region_available) {
                 break;
             } else {
+                //TODO(mvanotti): Report a soft error here. See darwin version.
                 address = (memory_address_t) info.BaseAddress + info.RegionSize;
                 continue;
             }
