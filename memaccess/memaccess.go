@@ -1,6 +1,8 @@
 // This packages contains an interface for accessing other processes' memory.
 package memaccess
 
+import "fmt"
+
 // Creates a new ProcessMemoryReader for a given process.
 func NewProcessMemoryReader(pid uint) (reader ProcessMemoryReader, harderror error, softerrors []error) {
 	return newProcessMemoryReaderImpl(pid)
@@ -34,6 +36,10 @@ type ProcessMemoryReader interface {
 type MemoryRegion struct {
 	Address uintptr
 	Size    uint
+}
+
+func (m MemoryRegion) String() string {
+	return fmt.Sprintf("MemoryRegion[%x-%x)", m.Address, m.Address+uintptr(m.Size))
 }
 
 // A centinel value indicating that there is no more regions available.
