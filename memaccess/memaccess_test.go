@@ -137,3 +137,57 @@ func TestCopyMemory(t *testing.T) {
 	}
 
 }
+
+func memoryRegionsOverlap(region1 MemoryRegion, region2 MemoryRegion) bool {
+	region1End := region1.Address + uintptr(region1.Size)
+	region2End := region2.Address + uintptr(region2.Size)
+
+	if region2.Address >= region1.Address {
+		if region2.Address < region1End {
+			return true
+		}
+	} else {
+		if region2End <= region1End {
+			return true
+		}
+	}
+
+	return false
+}
+
+func TestWalkMemoryDoesntOverlapTheBuffer(t *testing.T) {
+	cmd, err := test.LaunchTestCaseAndWaitForInitialization()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cmd.Process.Kill()
+
+	pid := uint(cmd.Process.Pid)
+	reader, err, softerrors := NewProcessMemoryReader(pid)
+	test.PrintSoftErrors(softerrors)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+
+	pageSize := uint(os.Getpagesize())
+	bufferSizes := []uint{1024, pageSize, pageSize + 100, pageSize * 2, pageSize*2 + 123}
+	for _, size := range bufferSizes {
+
+		lastRegion := MemoryRegion{}
+		err, softerrors = WalkMemory(reader, 0, size, func(address uintptr, buffer []byte) (keepSearching bool) {
+			currenRegion := MemoryRegion{Address: address, Size: uint(len(buffer))}
+			if memoryRegionsOverlap(lastRegion, currenRegion) {
+				t.Errorf("Regions overlap while reading %d at a time: %v %v", size, lastRegion, currenRegion)
+				return false
+			}
+
+			lastRegion = currenRegion
+			return true
+		})
+		test.PrintSoftErrors(softerrors)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
