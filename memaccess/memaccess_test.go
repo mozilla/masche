@@ -1,5 +1,3 @@
-//TODO: Test WalkMemory, specially WalkMemory with different buffer sizes, check that they don't
-// overlap, and it doesn't skips memory chunks.
 package memaccess
 
 import (
@@ -185,6 +183,77 @@ func TestWalkMemoryDoesntOverlapTheBuffer(t *testing.T) {
 			lastRegion = currenRegion
 			return true
 		})
+		test.PrintSoftErrors(softerrors)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestWalkRegionReadsEntireRegion(t *testing.T) {
+	cmd, err := test.LaunchTestCaseAndWaitForInitialization()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cmd.Process.Kill()
+
+	pid := uint(cmd.Process.Pid)
+	reader, err, softerrors := NewProcessMemoryReader(pid)
+	test.PrintSoftErrors(softerrors)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+
+	pageSize := uint(os.Getpagesize())
+	bufferSizes := []uint{1024, pageSize, pageSize + 100, pageSize * 2, pageSize*2 + 123}
+
+	var region MemoryRegion
+	region, err, softerrors = reader.NextReadableMemoryRegion(0)
+	test.PrintSoftErrors(softerrors)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if region == NoRegionAvailable {
+		t.Error("No starting region returned")
+	}
+
+	min_region_size := bufferSizes[len(bufferSizes)-1]
+	for region.Size < min_region_size {
+		if region == NoRegionAvailable {
+			t.Fatal("We couldn't find a region of %d bytes", min_region_size)
+		}
+
+		region, err, softerrors = reader.NextReadableMemoryRegion(region.Address + uintptr(region.Size))
+		test.PrintSoftErrors(softerrors)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, size := range bufferSizes {
+		buf := make([]byte, size)
+		readRegion := MemoryRegion{}
+
+		_, _, err, softerrors := walkRegion(reader, region, buf,
+			func(address uintptr, buffer []byte) (keepSearching bool) {
+				if readRegion.Address == 0 {
+					readRegion.Address = address
+					readRegion.Size = uint(len(buffer))
+					return true
+				}
+
+				readRegionLimit := readRegion.Address + uintptr(readRegion.Size)
+				if readRegionLimit != address {
+					t.Error(fmt.Sprintf("walkRegion skept %d bytes starting at %x", address-readRegionLimit,
+						readRegionLimit))
+					return false
+				}
+
+				readRegion.Size += uint(len(buffer))
+				return true
+			})
 		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
