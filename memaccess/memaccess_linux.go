@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -15,23 +16,20 @@ type process struct {
 	memFilepath  string
 }
 
-type mapInfo struct {
-	start uintptr
-	end   uintptr
-}
-
 func newProcessMemoryReaderImpl(pid uint) (process, error, []error) {
 	var result process
 	result.pid = pid
 	result.mapsFilepath = filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
 	result.memFilepath = filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
-	// trying to open the maps file, only to see if gives an error
-	f, harderror := os.Open(result.mapsFilepath)
 	softerrors := make([]error, 0)
+
+	// trying to open the maps file, only to see if we have enought privileges
+	f, harderror := os.Open(result.mapsFilepath)
 	if harderror != nil {
 		return process{}, harderror, softerrors
 	}
 	f.Close()
+
 	return result, nil, softerrors
 }
 
@@ -39,80 +37,79 @@ func (p process) Close() (error, []error) {
 	return nil, make([]error, 0)
 }
 
-// NextReadableMemoryRegion should return a MemoryRegion with address inside or,
-// if that's impossible, the next readable MemoryRegion
-func (p process) NextReadableMemoryRegion(address uintptr) (MemoryRegion, error, []error) {
+func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion, harderror error, softerrors []error) {
+	// fmt.Printf("\n\n\nNextReadableMemoryRegion %x\n", address)
+	softerrors = make([]error, 0)
+
 	mapsFile, harderror := os.Open(p.mapsFilepath)
-	softerrors := make([]error, 0)
 	if harderror != nil {
-		return MemoryRegion{}, harderror, softerrors
+		return
 	}
 	defer mapsFile.Close()
 
-	mappedAddresses, harderror := getMappedAddresses(mapsFile)
-	if harderror != nil {
-		return MemoryRegion{}, harderror, softerrors
-	}
-
-	mappedRegion, harderror := nextReadableMappedRegion(address, mappedAddresses)
-	//TODO: ignore non readable mapped regions and add a softerror
-	if harderror != nil {
-		return NoRegionAvailable, harderror, softerrors
-	}
-
-	if mappedRegion.start != 0 {
-		size := uint(mappedRegion.end - mappedRegion.start)
-		return MemoryRegion{mappedRegion.start, size}, nil, softerrors
-	}
-	return NoRegionAvailable, nil, softerrors
-}
-
-func nextReadableMappedRegion(address uintptr, mappedAddresses []mapInfo) (mapInfo, error) {
-	for _, mapinfo := range mappedAddresses {
-		if mapinfo.start <= address && address < mapinfo.end {
-			return mapinfo, nil
-		}
-	}
-	// there's no mapped region with address inside it
-	// I should return the next one
-	for _, mapinfo := range mappedAddresses {
-		if address < mapinfo.start {
-			return mapinfo, nil
-		}
-	}
-	// there's no mapped region with address inside it and no next region
-	return mapInfo{}, nil
-}
-
-func getMappedAddresses(mapsFile *os.File) ([]mapInfo, error) {
-	res := make([]mapInfo, 0)
+	region = MemoryRegion{}
 	scanner := bufio.NewScanner(mapsFile)
+	splitBySpacesRegexp := regexp.MustCompile("\\s+")
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		items := strings.Split(line, " ")
-		if len(items) <= 1 {
+		items := splitBySpacesRegexp.Split(line, -1)
+
+		if len(items) != 6 {
+			return region, fmt.Errorf("Unrecognised maps line: %s", line), softerrors
+		}
+
+		start, end, err := parseMemoryLimits(items[0])
+		if err != nil {
+			return region, err, softerrors
+		}
+
+		if end <= address {
 			continue
 		}
 
-		fields := strings.Split(items[0], "-")
-		start64, err := strconv.ParseUint(fields[0], 16, 64)
-		if err != nil {
-			return nil, err
+		// Skip vsyscall as it can't be read. It's a special page mapped by the kernel to accelerate some syscalls.
+		if items[5] == "[vsyscall]" {
+			continue
 		}
-		end64, err := strconv.ParseUint(fields[1], 16, 64)
-		if err != nil {
-			return nil, err
+
+		// Check if memory is unreadable
+		if items[1][0] == '-' {
+
+			// If we were already reading a region this will just finish it. We only report the softerror when we
+			// were actually trying to read it.
+			if region.Address == 0 {
+				return region, nil, softerrors
+			}
+
+			softerrors = append(softerrors, fmt.Errorf("Unreadable memory %s - address %x", items[0], address))
+			continue
 		}
-		start := uintptr(start64)
-		end := uintptr(end64)
-		info := mapInfo{start: start, end: end}
-		res = append(res, info)
+
+		size := uint(end - start)
+
+		// Begenning of a region
+		if region.Address == 0 {
+			region = MemoryRegion{Address: start, Size: size}
+			continue
+		}
+
+		// Continuation of a region
+		if region.Address+uintptr(region.Size) == start {
+			region.Size += size
+			continue
+		}
+
+		// This map is outside the current region, so we are ready
+		return region, nil, softerrors
 	}
+
+	// No region left
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return region, err, softerrors
 	}
-	return res, nil
+
+	return NoRegionAvailable, nil, softerrors
 }
 
 func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
@@ -126,6 +123,7 @@ func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
 
 	bytes_read, harderror := mem.ReadAt(buffer, int64(address))
 	if harderror != nil {
+		harderror := fmt.Errorf("Error while reading %d bytes starting at %x: %s", len(buffer), address, harderror)
 		return harderror, softerrors
 	}
 
@@ -134,4 +132,22 @@ func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
 	}
 
 	return nil, softerrors
+}
+
+//Parses the memory limits of a mapping as found in /proc/PID/maps
+func parseMemoryLimits(limits string) (start uintptr, end uintptr, err error) {
+	fields := strings.Split(limits, "-")
+	start64, err := strconv.ParseUint(fields[0], 16, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	start = uintptr(start64)
+
+	end64, err := strconv.ParseUint(fields[1], 16, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	end = uintptr(end64)
+
+	return
 }
