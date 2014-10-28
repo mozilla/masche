@@ -115,12 +115,11 @@ func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, 
 // hard error.
 func walkRegion(reader ProcessMemoryReader, region MemoryRegion, buf []byte, walkFn WalkFunc) (keepWalking bool,
 	errorAddress uintptr, harderror error, softerrors []error) {
-
 	softerrors = make([]error, 0)
 	keepWalking = true
 
 	remaningBytes := uintptr(region.Size)
-	for addr := region.Address; remaningBytes > 0; addr += uintptr(len(buf)) {
+	for addr := region.Address; remaningBytes > 0; {
 		err, serrs := reader.CopyMemory(addr, buf)
 		softerrors = append(softerrors, serrs...)
 
@@ -135,6 +134,7 @@ func walkRegion(reader ProcessMemoryReader, region MemoryRegion, buf []byte, wal
 			return
 		}
 
+		addr += uintptr(len(buf))
 		remaningBytes -= uintptr(len(buf))
 		if remaningBytes < uintptr(len(buf)) {
 			buf = buf[:remaningBytes]
