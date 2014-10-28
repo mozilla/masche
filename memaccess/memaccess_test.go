@@ -32,7 +32,6 @@ func TestNewProcessMemoryReader(t *testing.T) {
 	defer reader.Close()
 }
 
-//TODO: Improve this test.
 func TestManuallyWalk(t *testing.T) {
 	//TODO(mvanotti): Right now the command is hardcoded. We should decide how to fix this.
 	cmd := exec.Command("../test/tools/test.exe")
@@ -50,15 +49,30 @@ func TestManuallyWalk(t *testing.T) {
 	defer reader.Close()
 
 	var region MemoryRegion
-	region, err, _ = reader.NextReadableMemoryRegion(0)
+	region, err, softerrors = reader.NextReadableMemoryRegion(0)
+	printSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if region == NoRegionAvailable {
+		t.Error("No starting region returned")
+	}
+
+	previousRegion := region
 	for region != NoRegionAvailable {
 		region, err, softerrors = reader.NextReadableMemoryRegion(region.Address + uintptr(region.Size))
 		printSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		if region != NoRegionAvailable && region.Address < previousRegion.Address+uintptr(previousRegion.Size) {
+			fmt.Println(previousRegion)
+			fmt.Println(region)
+			t.Error("Returned region is not after the previous one.")
+		}
+
+		previousRegion = region
 	}
 }
