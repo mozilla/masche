@@ -53,6 +53,8 @@ type WalkFunc func(address uintptr, buf []byte) (keepSearching bool)
 // reading upto bufSize bytes into a buffer, and calling walkFn with the buffer
 // and the start address of the memory in the buffer. If walkFn returns false
 // WalkMemory stop reading the memory.
+// It can call to walkFn with a smaller buffer when reading the last part of
+// a memory region.
 func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error,
 	softerrors []error) {
 
