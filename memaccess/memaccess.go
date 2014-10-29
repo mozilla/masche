@@ -145,6 +145,78 @@ func walkRegion(reader ProcessMemoryReader, region MemoryRegion, buf []byte, wal
 
 	return
 }
+
+// Thiw function works as WalkMemory, except that it reads overlapped bytes. It first calls walkFn with a full buffer,
+// then advances just half of the buffer size, and calls it again.
+// As with WalkRegion, the buffer can be smaller at the end of a region.
+// NOTE: It doesn't work with odd bufSize.
+func SlidingWalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, walkFn WalkFunc) (
+	harderror error, softerrors []error) {
+
+	if bufSize%2 != 0 {
+		return fmt.Errorf("SlidingWalkMemory doesn't support odd bufferSizes"), softerrors
+	}
+
+	buffer := make([]byte, bufSize)
+	halfBufferSize := bufSize / 2
+	currentBufferStartsAt := uintptr(0)
+	bufferedBytes := uint(0)
+	harderror, softerrors = WalkMemory(reader, startAddress, halfBufferSize,
+		func(address uintptr, currentBuffer []byte) (keepSearching bool) {
+
+			fromAnotherRegion := currentBufferStartsAt+uintptr(bufferedBytes) < address && currentBufferStartsAt != 0
+
+			if fromAnotherRegion {
+				if bufferedBytes > 0 && bufferedBytes < bufSize {
+					// Call walkFn with buffer because if was starting a region and as it's not complete it hasn't been
+					// sent to walkFn
+					if !walkFn(currentBufferStartsAt, buffer[:bufferedBytes]) {
+						return false
+					}
+				}
+
+				bufferedBytes = 0
+			}
+
+			if bufferedBytes == 0 {
+				copy(buffer, currentBuffer)
+				currentBufferStartsAt = address
+
+				// If the currentBuffer is smaller the region has finished
+				if uint(len(currentBuffer)) != halfBufferSize {
+					if !walkFn(currentBufferStartsAt, buffer[:len(currentBuffer)]) {
+						return false
+					}
+				} else {
+					bufferedBytes = halfBufferSize
+				}
+
+				return true
+			}
+
+			if bufferedBytes == bufSize {
+				copy(buffer, buffer[:halfBufferSize])
+				currentBufferStartsAt += uintptr(halfBufferSize)
+			}
+
+			copy(buffer[halfBufferSize:], currentBuffer)
+			if !walkFn(currentBufferStartsAt, buffer[:halfBufferSize+uint(len(currentBuffer))]) {
+				return false
+			}
+
+			// If the currentBuffer is smaller the region has finished
+			if uint(len(currentBuffer)) != halfBufferSize {
+				bufferedBytes = 0
+			} else {
+				bufferedBytes = bufSize
+			}
+
+			return true
+		})
+
+	// If we only have half buffer filled we haven't called walkFn yet with it
+	if bufferedBytes == halfBufferSize {
+		walkFn(currentBufferStartsAt, buffer[:halfBufferSize])
 	}
 
 	return

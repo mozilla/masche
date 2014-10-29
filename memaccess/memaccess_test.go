@@ -258,5 +258,79 @@ func TestWalkRegionReadsEntireRegion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		if region != readRegion {
+			t.Error(fmt.Sprintf("%v not entirely read", region))
+		}
+	}
+}
+
+func TestSlidingWalkMemory(t *testing.T) {
+	cmd, err := test.LaunchTestCaseAndWaitForInitialization()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cmd.Process.Kill()
+
+	pid := uint(cmd.Process.Pid)
+	reader, err, softerrors := NewProcessMemoryReader(pid)
+	test.PrintSoftErrors(softerrors)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+
+	pageSize := uint(os.Getpagesize())
+	bufferSizes := []uint{1024, pageSize, pageSize + 100, pageSize * 2, pageSize*2 + 124}
+	for _, size := range bufferSizes {
+		lastRegion := MemoryRegion{}
+		err, softerrors = SlidingWalkMemory(reader, 0, size, func(address uintptr, buffer []byte) (keepSearching bool) {
+			currentRegion := MemoryRegion{Address: address, Size: uint(len(buffer))}
+
+			if lastRegion.Address == 0 {
+				lastRegion = currentRegion
+				return true
+			}
+
+			lastRegionLimit := lastRegion.Address + uintptr(lastRegion.Size)
+			overlappedBytes := uintptr(0)
+			regionIsContigous := false
+
+			if lastRegionLimit > currentRegion.Address {
+				overlappedBytes = lastRegionLimit - currentRegion.Address
+			} else if lastRegionLimit == currentRegion.Address {
+				regionIsContigous = true
+			}
+
+			if regionIsContigous {
+				if regionIsContigous {
+					t.Error(fmt.Sprintf("Contigous buffer while we are expecting overlapped ones."+
+						"buffer size %d - lastRegion %v - currentRegion %v", size, lastRegion, currentRegion))
+				}
+				return false
+			}
+
+			// If the last buffer wasn't read complete the current one can't be overlapped
+			if lastRegion.Size != size && overlappedBytes > 0 {
+				t.Error(fmt.Sprintf("Overlapped buffer after non-complete one. "+
+					"buffer size %d - lastRegion %v - currentRegion %v", size, lastRegion, currentRegion))
+				return false
+			}
+
+			// Overlapped bytes should be half of the buffer, or the buffer must came from another region
+			if overlappedBytes != uintptr(size/2) && overlappedBytes != 0 {
+				t.Error(fmt.Sprintf("Overlapping buffer by %d bytes. "+
+					"buffer size %d - lastRegion %v - currentRegion %v", overlappedBytes, size, lastRegion,
+					currentRegion))
+				return false
+			}
+
+			lastRegion = currentRegion
+			return true
+		})
+		test.PrintSoftErrors(softerrors)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
