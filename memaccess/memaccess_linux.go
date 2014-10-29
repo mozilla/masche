@@ -127,7 +127,7 @@ func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
 	}
 
 	if bytes_read != len(buffer) {
-		return fmt.Errorf("Coul not read the entire buffer"), softerrors
+		return fmt.Errorf("Could not read the entire buffer"), softerrors
 	}
 
 	return nil, softerrors
