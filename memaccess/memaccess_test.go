@@ -174,13 +174,13 @@ func TestWalkMemoryDoesntOverlapTheBuffer(t *testing.T) {
 
 		lastRegion := MemoryRegion{}
 		err, softerrors = WalkMemory(reader, 0, size, func(address uintptr, buffer []byte) (keepSearching bool) {
-			currenRegion := MemoryRegion{Address: address, Size: uint(len(buffer))}
-			if memoryRegionsOverlap(lastRegion, currenRegion) {
-				t.Errorf("Regions overlap while reading %d at a time: %v %v", size, lastRegion, currenRegion)
+			currentRegion := MemoryRegion{Address: address, Size: uint(len(buffer))}
+			if memoryRegionsOverlap(lastRegion, currentRegion) {
+				t.Errorf("Regions overlap while reading %d at a time: %v %v", size, lastRegion, currentRegion)
 				return false
 			}
 
-			lastRegion = currenRegion
+			lastRegion = currentRegion
 			return true
 		})
 		test.PrintSoftErrors(softerrors)
