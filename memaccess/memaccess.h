@@ -27,11 +27,11 @@ typedef uint32_t pid_tt;
 /**
  * Windows specific process handle.
  *
- * This is a workaround for https://code.google.com/p/go/issues/detail?id=8921
- * Go gc panics if process_handle_t is HANDLE (which is PVOID).
- * For now we have to use unsigned long long to hold the HANDLE object.
+ * NOTE: We use uintptr_t instead of HANDLE because Go doesn't allow
+ * pointers with invalid values. Windows' HANDLE is a PVOID internally and
+ * sometimes it is used as an integer.
  **/
-typedef unsigned long long process_handle_t;
+typedef uintptr_t process_handle_t;
 
 #endif /* _WIN32 */
 
@@ -50,12 +50,10 @@ typedef task_t process_handle_t;
  * A type representing a memory address used to represent addresses in the
  * inspected process.
  *
- * NOTE: This is necessary because Go doesn't allow us to have an unsafe pointer
+ * NOTE: This is necessary because Go doesn't allow us to have an unsafe.Pointer
  * with an address that is not mapped in the current process.
- *
- * Portability note: C99 defines unsigned long long to be at least 64 bits long.
  **/
-typedef unsigned long long memory_address_t;
+typedef uintptr_t memory_address_t;
 
 /**
  * This struct represents an error.
@@ -140,8 +138,8 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
  * It's caller's responsibility to provide a big enough buffer.
  **/
 response_t *copy_process_memory(process_handle_t handle,
-    memory_address_t start_address, size_t bytes_to_read, void *buffer,
-    size_t *bytes_read);
+                                memory_address_t start_address, size_t bytes_to_read, void *buffer,
+                                size_t *bytes_read);
 
 #endif /* MEMACCES_H */
 

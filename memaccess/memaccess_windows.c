@@ -70,10 +70,10 @@ static void error_free(error_t *err) {
 response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
     response_t *res = response_create();
 
-    *handle = (unsigned long long) OpenProcess(PROCESS_QUERY_INFORMATION |
-              PROCESS_VM_READ,
-              FALSE,
-              pid);
+    *handle = (uintptr_t) OpenProcess(PROCESS_QUERY_INFORMATION |
+                                      PROCESS_VM_READ,
+                                      FALSE,
+                                      pid);
 
     if (*handle == 0) {
         res->fatal_error = error_create(GetLastError());
@@ -170,8 +170,8 @@ response_t *copy_process_memory(process_handle_t handle,
     response_t *response = response_create();
     BOOL success = ReadProcessMemory((HANDLE) handle, (void *) start_address,
                                      buffer,
-                                     bytes_to_read,
-                                     bytes_read);
+                                     (SIZE_T) bytes_to_read,
+                                     (SIZE_T *) bytes_read);
     if (!success) {
         response->fatal_error = error_create(GetLastError());
     }
