@@ -52,7 +52,7 @@ func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion,
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		items := splitBySpacesRegexp.Split(line, -1)
+		items := splitMapsEntry(line)
 
 		if len(items) != 6 {
 			return region, fmt.Errorf("Unrecognised maps line: %s", line), softerrors
@@ -149,4 +149,19 @@ func parseMemoryLimits(limits string) (start uintptr, end uintptr, err error) {
 	end = uintptr(end64)
 
 	return
+}
+
+func splitMapsEntry(entry string) []string {
+	res := make([]string, 0, 6)
+	for i := 0; i < 5; i++ {
+		if strings.Index(entry, " ") != -1 {
+			res = append(res, entry[0:strings.Index(entry, " ")])
+			entry = entry[strings.Index(entry, " ")+1:]
+		} else {
+			res = append(res, entry, "")
+			return res
+		}
+	}
+	res = append(res, strings.TrimLeft(entry, " "))
+	return res
 }
