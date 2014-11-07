@@ -1,7 +1,12 @@
 //Compile this program with -O0
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdio.h>
+#ifdef _WIN32
+#include <windows.h>
+#define sleep(X) Sleep(X)
+#else
+#include <unistd.h>
+#endif
 
 int main(void) {
     char *string_regexp = "Un dia vi una vaca vestida de uniforme";
