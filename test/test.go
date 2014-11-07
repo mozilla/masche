@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 )
 
 func getTestCasePath() string {
@@ -19,11 +18,7 @@ func getTestCasePath() string {
 		os.Exit(-1)
 	}
 
-	if runtime.GOOS == "windows" {
-		return filepath.Join(dirPath, "test.exe")
-	}
-
-	return filepath.Join(dirPath, "test-"+runtime.GOOS)
+	return filepath.Join(dirPath, "test")
 }
 
 func PrintSoftErrors(softerrors []error) {
