@@ -114,7 +114,8 @@ EnumProcessModulesResponse *getModules(DWORD pid) {
 
         BOOL success = EnumProcessModulesEx(hProcess, aMods,
                                             size, &cbNeeded,
-                                            LIST_MODULES_ALL);
+                                            0x03);
+//TODO(mvanotti): Fix and replace the 0x03 to LIST_MODULES_ALL
         if (!success) {
             res->error = GetLastError();
             goto closeHandle;
