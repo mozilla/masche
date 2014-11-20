@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -48,8 +47,7 @@ func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion,
 
 	region = MemoryRegion{}
 	scanner := bufio.NewScanner(mapsFile)
-	splitBySpacesRegexp := regexp.MustCompile("\\s+")
-
+	
 	for scanner.Scan() {
 		line := scanner.Text()
 		items := splitMapsEntry(line)
