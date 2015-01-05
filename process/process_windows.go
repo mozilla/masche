@@ -9,7 +9,7 @@ import "C"
 
 type proc uintptr
 
-func allPids() (pids []uint, harderror error, softerrors []error) {
+func getAllPids() (pids []uint, harderror error, softerrors []error) {
 	r := C.getAllPids()
 	defer C.EnumProcessesResponse_Free(r)
 	if r.error != 0 {

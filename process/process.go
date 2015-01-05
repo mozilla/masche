@@ -5,23 +5,37 @@ package process
 
 import "regexp"
 
+// Process type represents a running processes that can be used by other modules.
+// In order to get a Process on of the Open* functions must be called, and once it's not needed it must be closed.
 type Process interface {
+	// Pid returns the process' pid.
 	Pid() uint
+
+	// Name returns the process' binary name.
 	Name() (name string, harderror error, softerrors []error)
+
+	// Closes this Process.
 	Close() (harderror error, softerrors []error)
-	Handle() interface{} // OS Specific Internal Handle.
+
+	// Handle returns the OS-specific internal representation of the process used in Masche.
+	Handle() interface{}
 }
 
+// OpenFromPid opens a process by its pid.
 func OpenFromPid(pid uint) (p Process, harderror error, softerrors []error) {
+	// This function is implemented by the OS-specific openFromPid function.
 	return openFromPid(pid)
 }
 
-func AllPids() (pids []uint, harderror error, softerrors []error) {
-	return allPids()
+// GetAllPids returns a slice with al the running processes' pids.
+func GetAllPids() (pids []uint, harderror error, softerrors []error) {
+	// This function is implemented by the OS-specific getAllPids function.
+	return getAllPids()
 }
 
-func AllProcesses() (ps []Process, harderror error, softerrors []error) {
-	pids, err, _ := AllPids()
+// OpenAll opens all the running processes returning a slice of Process.
+func OpenAll() (ps []Process, harderror error, softerrors []error) {
+	pids, err, _ := GetAllPids()
 	if err != nil {
 		return nil, err, nil
 	}
@@ -41,6 +55,7 @@ func AllProcesses() (ps []Process, harderror error, softerrors []error) {
 	return ps, nil, softerrs
 }
 
+// CloseAll closes all the processes from the given slice.
 func CloseAll(ps []Process) (harderrors []error, softerrors []error) {
 	harderrors = make([]error, 0)
 	softerrors = make([]error, 0)
@@ -58,8 +73,9 @@ func CloseAll(ps []Process) (harderrors []error, softerrors []error) {
 	return harderrors, softerrors
 }
 
-func Grep(r *regexp.Regexp) (ps []Process, harderror error, softerrors []error) {
-	procs, harderror, softerrors := AllProcesses()
+// OpenByName recieves a Regexp an returns a slice with all the Processes whose name matches it.
+func OpenByName(r *regexp.Regexp) (ps []Process, harderror error, softerrors []error) {
+	procs, harderror, softerrors := OpenAll()
 	if harderror != nil {
 		return nil, harderror, nil
 	}

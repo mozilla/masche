@@ -28,7 +28,7 @@ func (p proc) Handle() interface{} {
 	return nil
 }
 
-func allPids() (pids []uint, harderror error, softerrors []error) {
+func getAllPids() (pids []uint, harderror error, softerrors []error) {
 	files, err := ioutil.ReadDir("/proc/")
 	if err != nil {
 		return nil, err, nil
