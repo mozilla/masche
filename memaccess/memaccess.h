@@ -85,19 +85,16 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
         memory_address_t address, bool *region_available,
         memory_region_t *memory_region);
 
-
 /**
  * Copies a chunk of memory from the process' address space to the buffer.
  *
  * Note that start_address is the address as seen by the process.
- *
  * If no fatal error ocurred the buffer will be populated with bytes_read bytes.
- *
  * It's caller's responsibility to provide a big enough buffer.
  **/
 response_t *copy_process_memory(process_handle_t handle,
-                                memory_address_t start_address, size_t bytes_to_read, void *buffer,
-                                size_t *bytes_read);
+        memory_address_t start_address, size_t bytes_to_read, void *buffer,
+        size_t *bytes_read);
 
 #endif /* MEMACCES_H */
 
