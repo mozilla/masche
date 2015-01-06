@@ -1,19 +1,10 @@
 #ifndef MEMACCES_H
 #define MEMACCES_H
 
-/**
- * This header defines a common interface for reading processes' memory.
- *
- *  The basic workflow excluding memory freeing is
- *      1. Open a process handle.
- *      2. Ask for memory region containing address 0 to get the first region.
- *      3. Read whatever you want from the region.
- *      4. Ask for the next region, if available goto 3.
- *      5. Close the process.
- **/
-
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "../cresponse/response.h"
 
 /**
  * Process ID type.
@@ -56,33 +47,6 @@ typedef task_t process_handle_t;
 typedef uintptr_t memory_address_t;
 
 /**
- * This struct represents an error.
- *
- * error_number is the error as returned by the OS, 0 for no error.
- * description is a null-terminated string.
- **/
-typedef struct {
-    int error_number;
-    char *description;
-} error_t;
-
-/**
- * This struct represents the error releated parts of a response to a function
- * call.
- *
- * fatal_error may point to an error_t that made the operation fail or be NULL.
- * soft_errors may be an array of non-fatal errors or be NULL.
- * soft_errors_count is the number errors in soft_errors (if no array, a 0).
- * soft_errors_capaciy is the syze of the soft_errors array (if no array, a 0).
- **/
-typedef struct {
-    error_t *fatal_error;
-    error_t *soft_errors;
-    size_t soft_errors_count;
-    size_t soft_errors_capacity;
-} response_t;
-
-/**
  * This struct represents a region of readable contiguos memory of a process.
  *
  * No readable memory can be available right next to this region, it's maximal
@@ -94,12 +58,6 @@ typedef struct {
     memory_address_t start_address;
     size_t length;
 } memory_region_t;
-
-/**
- * Releases the resources used by an error response_t, including all error_t's
- * resources.
- **/
-void response_free(response_t *errors);
 
 /**
  * Creates a handle for a given process based on its pid.

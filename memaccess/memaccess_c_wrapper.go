@@ -3,6 +3,7 @@
 package memaccess
 
 // #include "memaccess.h"
+// #include "../cresponse/response.c" // This is a hack used because cgo only supports compiling c files in the same dir
 // #cgo CFLAGS: -std=c99
 import "C"
 
