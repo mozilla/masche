@@ -3,58 +3,14 @@
 package memaccess
 
 // #include "memaccess.h"
-// #include "../cresponse/response.c" // This is a hack used because cgo only supports compiling c files in the same dir
 // #cgo CFLAGS: -std=c99
 import "C"
 
 import (
 	"fmt"
-	"reflect"
+	"github.com/mozilla/masche/cresponse"
 	"unsafe"
 )
-
-// Go representation of an error returned by memaccess.h functions
-type osError struct {
-	number      int
-	description string
-}
-
-func (err osError) Error() string {
-	return fmt.Sprintf("System error number %d: %s", err.number, err.description)
-}
-
-// Tranforms a C.error_t into a osError
-func cErrorToOsError(cError C.error_t) osError {
-	return osError{
-		number:      int(cError.error_number),
-		description: C.GoString(cError.description),
-	}
-}
-
-// Returns the Go representation of the errors present in a C.reponse_t
-func getResponseErrors(response *C.response_t) (harderror error, softerrors []error) {
-	if response.fatal_error != nil && int(response.fatal_error.error_number) != 0 {
-		harderror = cErrorToOsError(*response.fatal_error)
-	} else {
-		harderror = nil
-	}
-
-	softerrorsCount := int(response.soft_errors_count)
-	softerrors = make([]error, 0, softerrorsCount)
-
-	cSoftErrorsHeader := reflect.SliceHeader{
-		Data: uintptr(unsafe.Pointer(response.soft_errors)),
-		Len:  softerrorsCount,
-		Cap:  softerrorsCount,
-	}
-	cSoftErrors := *(*[]C.error_t)(unsafe.Pointer(&cSoftErrorsHeader))
-
-	for _, cErr := range cSoftErrors {
-		softerrors = append(softerrors, cErrorToOsError(cErr))
-	}
-
-	return
-}
 
 // ProcessMemoryReader implementation
 type process struct {
@@ -66,7 +22,7 @@ func newProcessMemoryReaderImpl(pid uint) (reader ProcessMemoryReader, harderror
 	var result process
 
 	resp := C.open_process_handle(C.pid_tt(pid), &result.hndl)
-	harderror, softerrors = getResponseErrors(resp)
+	harderror, softerrors = cresponse.GetResponsesErrors(unsafe.Pointer(resp))
 	C.response_free(resp)
 
 	if harderror == nil {
@@ -82,7 +38,7 @@ func newProcessMemoryReaderImpl(pid uint) (reader ProcessMemoryReader, harderror
 func (p process) Close() (harderror error, softerrors []error) {
 	resp := C.close_process_handle(p.hndl)
 	defer C.response_free(resp)
-	return getResponseErrors(resp)
+	return cresponse.GetResponsesErrors(unsafe.Pointer(resp))
 }
 
 func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion, harderror error, softerrors []error) {
@@ -94,7 +50,7 @@ func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion,
 		C.memory_address_t(address),
 		&isAvailable,
 		&cRegion)
-	harderror, softerrors = getResponseErrors(response)
+	harderror, softerrors = cresponse.GetResponsesErrors(unsafe.Pointer(response))
 	C.response_free(response)
 
 	if harderror != nil || isAvailable == false {
@@ -116,7 +72,7 @@ func (p process) CopyMemory(address uintptr, buffer []byte) (harderror error, so
 		&bytesRead,
 	)
 
-	harderror, softerrors = getResponseErrors(resp)
+	harderror, softerrors = cresponse.GetResponsesErrors(unsafe.Pointer(resp))
 	C.response_free(resp)
 
 	if harderror != nil {
