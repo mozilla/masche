@@ -175,10 +175,12 @@ response_t *get_next_readable_memory_region(process_handle_t handle,
                 // we ask for the region 1 byte after address.
                 if (addr + size <= address) {
                     char *description = NULL;
+                    char *format = "wrong region obtained, expected it to "
+                        "contain %" PRIxPTR ", but got: %" PRIxPTR "-%"
+                        PRIxPTR;
                     asprintf(
                         &description,
-                        "wrong region obtained, expected it to contain %llx, "
-                        "but got: %llx-%llx",
+                        format,
                         address,
                         addr,
                         addr + size - 1
