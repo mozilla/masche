@@ -1,5 +1,5 @@
 TESTBINDIR=test/tools
-TESTS=./memaccess ./memsearch
+TESTS=./memaccess ./memsearch ./process
 
 all: run_tests run_tests32
 
