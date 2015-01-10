@@ -14,3 +14,7 @@ run_tests32: testbin32
 
 testbin32:
 	$(MAKE) -C $(TESTBINDIR) test32
+
+clean:
+	go clean $(TESTS)
+	$(MAKE) -C $(TESTBINDIR) clean

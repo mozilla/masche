@@ -9,3 +9,6 @@ test:
 
 test32:
 	$(CC) $(CFLAGS) $(TESTFILE) -m32 -o test
+
+clean:
+	rm test tests32
