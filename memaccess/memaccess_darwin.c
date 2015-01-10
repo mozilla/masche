@@ -5,11 +5,6 @@
 
 #include "memaccess.h"
 
-static void response_set_fatal_from_kret(response_t *response,
-        kern_return_t error_number) {
-    response_set_fatal_error(response, (int) error_number,
-            strdup(mach_error_string(error_number)));
-}
 
 response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
     task_t task;

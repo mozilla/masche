@@ -123,4 +123,16 @@ static void response_add_soft_error(response_t *response, int error_number,
     response->soft_errors_count++;
 }
 
+#ifdef __MACH__
+
+#include <mach/mach.h>
+
+static void response_set_fatal_from_kret(response_t *response,
+        kern_return_t error_number) {
+    response_set_fatal_error(response, (int) error_number,
+            strdup(mach_error_string(error_number)));
+}
+
+#endif /* __MACH__ */
+
 #endif /* RESPONSE_H */
