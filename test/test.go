@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-func getTestCasePath() string {
+func GetTestCasePath() string {
 	//TODO: Right now the command is hardcoded. We should decide how to fix this.
 	dirPath, err := filepath.Abs("../test/tools")
 
@@ -29,7 +29,7 @@ func PrintSoftErrors(softerrors []error) {
 
 // this method redirects the process's stdout to the test stdout
 func LaunchTestCase() (*exec.Cmd, error) {
-	cmd := exec.Command(getTestCasePath())
+	cmd := exec.Command(GetTestCasePath())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()
@@ -37,7 +37,7 @@ func LaunchTestCase() (*exec.Cmd, error) {
 }
 
 func LaunchTestCaseAndWaitForInitialization() (*exec.Cmd, error) {
-	return launchProcessAndWaitInitialization(getTestCasePath())
+	return launchProcessAndWaitInitialization(GetTestCasePath())
 }
 
 // starts a process and waits until it writes everythin to stdout: that way we know it has been initialized.
