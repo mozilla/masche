@@ -3,25 +3,15 @@ package memaccess
 import (
 	"bufio"
 	"fmt"
+	"github.com/mozilla/masche/common"
 	"github.com/mozilla/masche/process"
 	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
-
-func mapsFilePathFromPid(pid uint) string {
-	return filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
-}
-
-func memFilePathFromPid(pid uint) string {
-	return filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
-}
 
 func nextReadableMemoryRegion(p process.Process, address uintptr) (region MemoryRegion, harderror error,
 	softerrors []error) {
 
-	mapsFile, harderror := os.Open(mapsFilePathFromPid(p.Pid()))
+	mapsFile, harderror := os.Open(common.MapsFilePathFromPid(p.Pid()))
 	if harderror != nil {
 		return
 	}
@@ -32,13 +22,13 @@ func nextReadableMemoryRegion(p process.Process, address uintptr) (region Memory
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		items := splitMapsEntry(line)
+		items := common.SplitMapsFileEntry(line)
 
 		if len(items) != 6 {
 			return region, fmt.Errorf("Unrecognised maps line: %s", line), softerrors
 		}
 
-		start, end, err := parseMemoryLimits(items[0])
+		start, end, err := common.ParseMapsFileMemoryLimits(items[0])
 		if err != nil {
 			return region, err, softerrors
 		}
@@ -97,7 +87,7 @@ func nextReadableMemoryRegion(p process.Process, address uintptr) (region Memory
 }
 
 func copyMemory(p process.Process, address uintptr, buffer []byte) (harderror error, softerrors []error) {
-	mem, harderror := os.Open(memFilePathFromPid(p.Pid()))
+	mem, harderror := os.Open(common.MemFilePathFromPid(p.Pid()))
 
 	if harderror != nil {
 		harderror := fmt.Errorf("Error while reading %d bytes starting at %x: %s", len(buffer), address, harderror)
@@ -116,38 +106,4 @@ func copyMemory(p process.Process, address uintptr, buffer []byte) (harderror er
 	}
 
 	return nil, softerrors
-}
-
-//Parses the memory limits of a mapping as found in /proc/PID/maps
-func parseMemoryLimits(limits string) (start uintptr, end uintptr, err error) {
-	fields := strings.Split(limits, "-")
-	start64, err := strconv.ParseUint(fields[0], 16, 64)
-	if err != nil {
-		return 0, 0, err
-	}
-	start = uintptr(start64)
-
-	end64, err := strconv.ParseUint(fields[1], 16, 64)
-	if err != nil {
-		return 0, 0, err
-	}
-	end = uintptr(end64)
-
-	return
-}
-
-// splitMapsEntry splits a line of the maps files returning a slice with an element for each of its parts.
-func splitMapsEntry(entry string) []string {
-	res := make([]string, 0, 6)
-	for i := 0; i < 5; i++ {
-		if strings.Index(entry, " ") != -1 {
-			res = append(res, entry[0:strings.Index(entry, " ")])
-			entry = entry[strings.Index(entry, " ")+1:]
-		} else {
-			res = append(res, entry, "")
-			return res
-		}
-	}
-	res = append(res, strings.TrimLeft(entry, " "))
-	return res
 }

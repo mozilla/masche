@@ -1,10 +1,10 @@
-package memaccess
+package common
 
 import (
 	"testing"
 )
 
-func TestSplitMapsEntry(t *testing.T) {
+func TestSplitMapsFileEntry(t *testing.T) {
 	var entries = []string{
 		"7fb8faf65000-7fb8faf66000 rw-p 00023000 08:01 922969                     /lib/x86_64-linux-gnu/ld-2.19.so",
 		"7fb8faf65000-7fb8faf66000 rw-p 00023000 08:01 922969                     /lib/x86_64-linux-gnu/with spaces.so",
@@ -24,11 +24,55 @@ func TestSplitMapsEntry(t *testing.T) {
 	}
 
 	for i, entry := range entries {
-		splitted := splitMapsEntry(entry)
+		splitted := SplitMapsFileEntry(entry)
 		if !compareStringSlices(results[i], splitted) {
 			t.Error("Error splitting map entry", entry, " - Expected:", results[i], " - Got: ", splitted)
 		}
 	}
+}
+
+func TestParseMapsFileMemoryLimits(t *testing.T) {
+	var memLimits = []string{
+		"7fb8faf65000-7fb8faf66000",
+		"7fff231a6000-7fff231c7000",
+	}
+
+	var results = [][]uintptr{
+		[]uintptr{0x7fb8faf65000, 0x7fb8faf66000},
+		[]uintptr{0x7fff231a6000, 0x7fff231c7000},
+	}
+
+	for i, limits := range memLimits {
+		start, end, err := ParseMapsFileMemoryLimits(limits)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if results[i][0] != start {
+			t.Error("expected ", results[i][0], " and got ", start)
+		}
+
+		if results[i][1] != end {
+			t.Error("expected ", results[i][1], " and got ", end)
+		}
+	}
+
+	var invalidMemoryLimits = []string{
+		"a",
+		"aa-",
+		"-a",
+		"NonAlpha-1",
+		"1-NonAlpha",
+		"1-1-1",
+	}
+
+	for _, limits := range invalidMemoryLimits {
+		_, _, err := ParseMapsFileMemoryLimits(limits)
+		if err == nil {
+			t.Error("an error should have been returned when parsing ", limits)
+		}
+	}
+
 }
 
 func compareStringSlices(a []string, b []string) bool {
