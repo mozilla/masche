@@ -1,11 +1,14 @@
 package process
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 type proc uint
@@ -15,8 +18,37 @@ func (p proc) Pid() uint {
 }
 
 func (p proc) Name() (name string, harderror error, softerrors []error) {
-	exename := filepath.Join("/proc", fmt.Sprintf("%d", p.Pid()), "exe")
-	name, err := filepath.EvalSymlinks(exename)
+	exePath := filepath.Join("/proc", fmt.Sprintf("%d", p.Pid()), "exe")
+	name, err := filepath.EvalSymlinks(exePath)
+
+	if err != nil {
+		// If the exe link doesn't take us to the real path of the binary of the process maybe it's not present anymore
+		// or the process didn't started from a file. We mimic this ps(1) trick and take the name form
+		// /proc/<pid>/status in that case.
+
+		statusPath := filepath.Join("/proc", fmt.Sprintf("%d", p.Pid()), "status")
+		statusFile, err := os.Open(statusPath)
+		if err != nil {
+			return name, err, nil
+		}
+
+		r := bufio.NewReader(statusFile)
+		for line, _, err := r.ReadLine(); err != io.EOF; line, _, err = r.ReadLine() {
+			if err != nil {
+				return name, err, nil
+			}
+
+			namePrefix := "Name:"
+			if strings.HasPrefix(string(line), namePrefix) {
+				name := strings.Trim(string(line[len(namePrefix):]), " \t")
+
+				// We add the square brackets to be consistent with ps(1) output.
+				return "[" + name + "]", nil, nil
+			}
+		}
+
+		return name, fmt.Errorf("No name found for pid %v", p.Pid()), nil
+	}
 
 	return name, err, nil
 }
