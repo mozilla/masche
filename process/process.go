@@ -51,6 +51,7 @@ func OpenAll() (ps []Process, harderror error, softerrors []error) {
 		p, err, softs := OpenFromPid(pid)
 		if err != nil {
 			softerrs = append(softerrs, err)
+			continue
 		}
 		if softs != nil {
 			softerrs = append(softerrs, softs...)
