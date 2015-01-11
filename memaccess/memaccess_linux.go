@@ -103,6 +103,8 @@ func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion,
 		return region, nil, softerrors
 	}
 
+	//TODO(alcuadrado): Last region should be returned if available.
+
 	// No region left
 	if err := scanner.Err(); err != nil {
 		return region, err, softerrors

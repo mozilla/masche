@@ -1,8 +1,11 @@
 package memsearch
 
 import (
+	"fmt"
 	"github.com/mozilla/masche/memaccess"
 	"github.com/mozilla/masche/test"
+	"net/http"
+	_ "net/http/pprof"
 	"regexp"
 	"testing"
 )
@@ -78,21 +81,25 @@ func TestRegexpSearchInOtherProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reader.Close()
+	//
+	// for i, str := range regexpToMatch {
+	// 	r, err := regexp.Compile(str)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	//
+	// 	found, _, err, softerrors := FindNextMatch(reader, 0, r, nil)
+	// 	test.PrintSoftErrors(softerrors)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	} else if !found {
+	// 		t.Fatalf("memoryGrep failed for case %d, the following regexp should be found: %s", i, str)
+	// 	}
+	// }
 
-	for i, str := range regexpToMatch {
-		r, err := regexp.Compile(str)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		found, _, err, softerrors := FindNextMatch(reader, 0, r)
-		test.PrintSoftErrors(softerrors)
-		if err != nil {
-			t.Fatal(err)
-		} else if !found {
-			t.Fatalf("memoryGrep failed for case %d, the following regexp should be found: %s", i, str)
-		}
-	}
+	go func() {
+		fmt.Println(http.ListenAndServe("127.0.0.1:6161", nil))
+	}()
 
 	// These must not match
 	for i, str := range regexpToNotMatch {
@@ -101,7 +108,7 @@ func TestRegexpSearchInOtherProcess(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		found, _, err, softerrors := FindNextMatch(reader, 0, r)
+		found, _, err, softerrors := FindNextMatch(reader, 0, r, nil)
 		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
