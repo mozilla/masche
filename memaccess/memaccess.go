@@ -55,6 +55,18 @@ func WalkMemory(p process.Process, startAddress uintptr, bufSize uint, walkFn Wa
 		return
 	}
 
+	// The first region can start befor startAddress. If that happens, it must contain it. In that case, we set the
+	// region's Adrress to startAdress to behave as documented.
+	if region.Address < startAddress {
+		if region.Address+uintptr(region.Size) >= startAddress {
+			harderror = fmt.Errorf("First memory region doesn't contain the startAddress. This is a bug.")
+			return
+		}
+
+		region.Size -= uint(startAddress - region.Address)
+		region.Address = startAddress
+	}
+
 	const max_retries int = 5
 
 	buf := make([]byte, bufSize)
