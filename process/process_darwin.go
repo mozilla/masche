@@ -40,7 +40,7 @@ func getAllPids() (pids []uint, harderror error, softerrors []error) {
 	}
 
 	numberOfPids := uintptr(bytesUsed) / pidSize
-	pids = make([]uint, numberOfPids)
+	pids = make([]uint, 0, numberOfPids)
 	cpidsSlice := *(*[]C.pid_t)(unsafe.Pointer(
 		&reflect.SliceHeader{
 			Data: uintptr(unsafe.Pointer(cpids)),
@@ -48,7 +48,11 @@ func getAllPids() (pids []uint, harderror error, softerrors []error) {
 			Cap:  int(numberOfPids)}))
 
 	for i, _ := range cpidsSlice {
-		pids[i] = uint(cpidsSlice[i])
+		if cpidsSlice[i] == 0 {
+			continue
+		}
+
+		pids = append(pids, uint(cpidsSlice[i]))
 	}
 
 	return pids, nil, nil
