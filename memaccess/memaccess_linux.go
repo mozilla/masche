@@ -85,7 +85,12 @@ func nextReadableMemoryRegion(p process.Process, address uintptr) (region Memory
 
 	// No region left
 	if err := scanner.Err(); err != nil {
-		return region, err, softerrors
+		return NoRegionAvailable, err, softerrors
+	}
+
+	// The last map was a valid region, so it was not closed by an invalid/non-contiguous one and we have to return it
+	if region.Address > 0 {
+		return region, harderror, softerrors
 	}
 
 	return NoRegionAvailable, nil, softerrors
