@@ -7,10 +7,10 @@ import (
 	"regexp"
 )
 
-// Finds for the first occurrence of needle in the Process starting at a given address.
-// If the needle is found the first argument will be true and the second one will contain it's address in the other
-// process' address space.
-func FindNext(p process.Process, address uintptr, needle []byte) (found bool, foundAddress uintptr,
+// FindByFindBytesSequence finds for the first occurrence of needle in the Process starting at a given address (in the
+// process address space). If the needle is found the first argument will be true and the second one will contain it's
+// address.
+func FindBytesSequence(p process.Process, address uintptr, needle []byte) (found bool, foundAddress uintptr,
 	harderror error, softerrors []error) {
 
 	const min_buffer_size = uint(4096)
@@ -35,7 +35,10 @@ func FindNext(p process.Process, address uintptr, needle []byte) (found bool, fo
 	return
 }
 
-func FindNextMatch(p process.Process, address uintptr, r *regexp.Regexp) (found bool, foundAddress uintptr,
+// FindFindRegexpMatch finds the first match of r in the process memory. This function works as FindFindBytesSequence
+// but instead of searching for a literal bytes sequence it uses a regexp. It tries to match the regexp in the memory
+// as is, not interpreting it as any charset in particular.
+func FindRegexpMatch(p process.Process, address uintptr, r *regexp.Regexp) (found bool, foundAddress uintptr,
 	harderror error, softerrors []error) {
 
 	const buffer_size = uint(4096)

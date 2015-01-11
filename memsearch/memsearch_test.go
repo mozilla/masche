@@ -45,7 +45,7 @@ func TestSearchInOtherProcess(t *testing.T) {
 	defer proc.Close()
 
 	for i, buf := range buffersToFind {
-		found, _, err, softerrors := FindNext(proc, 0, buf)
+		found, _, err, softerrors := FindBytesSequence(proc, 0, buf)
 		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
@@ -55,7 +55,7 @@ func TestSearchInOtherProcess(t *testing.T) {
 	}
 
 	// This must not be present
-	found, _, err, softerrors := FindNext(proc, 0, notPresent)
+	found, _, err, softerrors := FindBytesSequence(proc, 0, notPresent)
 	test.PrintSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +85,7 @@ func TestRegexpSearchInOtherProcess(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		found, _, err, softerrors := FindNextMatch(proc, 0, r)
+		found, _, err, softerrors := FindRegexpMatch(proc, 0, r)
 		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
@@ -101,7 +101,7 @@ func TestRegexpSearchInOtherProcess(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		found, _, err, softerrors := FindNextMatch(proc, 0, r)
+		found, _, err, softerrors := FindRegexpMatch(proc, 0, r)
 		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)

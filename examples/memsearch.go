@@ -50,7 +50,7 @@ func main() {
 		log.Fatal("Missing action flag.")
 
 	case "search":
-		found, address, harderror, softerrors := memsearch.FindNext(proc, uintptr(*addr), []byte(*needle))
+		found, address, harderror, softerrors := memsearch.FindBytesSequence(proc, uintptr(*addr), []byte(*needle))
 		logErrors(harderror, softerrors)
 		if found {
 			log.Printf("Found in address: %x\n", address)
@@ -62,7 +62,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		found, address, harderror, softerrors := memsearch.FindNextMatch(proc, uintptr(*addr), r)
+		found, address, harderror, softerrors := memsearch.FindRegexpMatch(proc, uintptr(*addr), r)
 		logErrors(harderror, softerrors)
 		if found {
 			log.Printf("Found in address: %x\n", address)
