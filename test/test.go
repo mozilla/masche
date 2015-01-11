@@ -18,7 +18,13 @@ func GetTestCasePath() string {
 		os.Exit(-1)
 	}
 
-	return filepath.Join(dirPath, "test")
+	path, err := filepath.EvalSymlinks(filepath.Join(dirPath, "test"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(-1)
+	}
+
+	return path
 }
 
 func PrintSoftErrors(softerrors []error) {
