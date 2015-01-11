@@ -7,7 +7,7 @@ import (
 	"regexp"
 )
 
-// Finds for the first occurrence of needle in the ProcessMemoryReader starting at a given address.
+// Finds for the first occurrence of needle in the Process starting at a given address.
 // If the needle is found the first argument will be true and the second one will contain it's address in the other
 // process' address space.
 func FindNext(p process.Process, address uintptr, needle []byte) (found bool, foundAddress uintptr,
