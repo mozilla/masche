@@ -5,7 +5,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mozilla/masche/listlibs"
+	"github.com/mozilla/masche/process"
 	"log"
 	"regexp"
 )
@@ -20,12 +20,26 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ps, _, err := listlibs.GrepProcesses(r)
-	if err != nil {
+	ps, hard, soft := process.OpenByName(r)
+	if hard != nil {
 		log.Fatal(err)
+	}
+	if soft != nil {
+		for _, err := range soft {
+			log.Println(err)
+		}
 	}
 
 	for _, p := range ps {
-		fmt.Printf("Process: %s\nPid: %d\n\n", p.Filename, p.Pid)
+		name, hard, soft := p.Name()
+		if hard != nil {
+			log.Fatal(err)
+		}
+		if soft != nil {
+			for _, err := range soft {
+				log.Println(err)
+			}
+		}
+		fmt.Printf("Process: %s\nPid: %d\n\n", name, p.Pid())
 	}
 }
