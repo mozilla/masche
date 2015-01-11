@@ -136,6 +136,7 @@ func parseMemoryLimits(limits string) (start uintptr, end uintptr, err error) {
 	return
 }
 
+// splitMapsEntry splits a line of the maps files returning a slice with an element for each of its parts.
 func splitMapsEntry(entry string) []string {
 	res := make([]string, 0, 6)
 	for i := 0; i < 5; i++ {
