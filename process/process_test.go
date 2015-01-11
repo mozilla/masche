@@ -2,6 +2,7 @@ package process
 
 import (
 	"github.com/mozilla/masche/test"
+	"regexp"
 	"testing"
 )
 
@@ -44,5 +45,34 @@ func TestProcessName(t *testing.T) {
 
 	if name != test.GetTestCasePath() {
 		t.Error("Expected name", test.GetTestCasePath(), "and got", name)
+	}
+}
+
+func TestOpenByName(t *testing.T) {
+	cmd, err := test.LaunchTestCase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cmd.Process.Kill()
+
+	r := regexp.MustCompile("test/tools/test$")
+	procs, err, softerrors := OpenByName(r)
+	defer CloseAll(procs)
+	test.PrintSoftErrors(softerrors)
+	if len(procs) == 0 {
+		t.Error("The test case was launched and not opened.")
+	}
+
+	for _, proc := range procs {
+
+		name, err, softerrors := proc.Name()
+		test.PrintSoftErrors(softerrors)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if name != test.GetTestCasePath() {
+			t.Error("Expected name", test.GetTestCasePath(), "and got", name)
+		}
 	}
 }
