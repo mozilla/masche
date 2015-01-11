@@ -2,9 +2,9 @@ CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -std=c99 -O0
 TESTFILE=known_byte_sequences.c
 
-all: test test32
+all: test64 test32
 
-test:
+test64:
 	$(CC) $(CFLAGS) $(TESTFILE) -o test
 
 test32:

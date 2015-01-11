@@ -1,13 +1,13 @@
 TESTBINDIR=test/tools
 TESTS=./memaccess ./memsearch ./process
 
-all: run_tests run_tests32
+all: run_tests64 run_tests32
 
-run_tests: testbin
+run_tests64: testbin64
 	go test $(TESTS)
 
-testbin:
-	$(MAKE) -C $(TESTBINDIR) test
+testbin64:
+	$(MAKE) -C $(TESTBINDIR) test64
 
 run_tests32: testbin32
 	go test $(TESTS)
