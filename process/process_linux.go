@@ -3,6 +3,7 @@ package process
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 )
@@ -48,5 +49,14 @@ func getAllPids() (pids []uint, harderror error, softerrors []error) {
 }
 
 func openFromPid(pid uint) (p Process, harderror error, softerrors []error) {
+	// Check if we have premissions to read the process memory
+	memPath := filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
+	memFile, err := os.Open(memPath)
+	if err != nil {
+		harderror = fmt.Errorf("Permission denied to access memory of process %v", pid)
+		return
+	}
+	defer memFile.Close()
+
 	return proc(pid), nil, nil
 }
