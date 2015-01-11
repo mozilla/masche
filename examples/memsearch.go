@@ -9,59 +9,72 @@ import (
 	"flag"
 	"github.com/mozilla/masche/memaccess"
 	"github.com/mozilla/masche/memsearch"
+	"github.com/mozilla/masche/process"
 	"log"
 	"regexp"
 )
 
 var (
-	pid      = flag.Int("pid", 0, "Process id to analyze")
-	prnt     = flag.Bool("print", false, "Print information")
-	needle   = flag.String("s", "Find This!", "String to search for")
-	addr     = flag.Int("addr", 0x0, "Process Address to read")
-	size     = flag.Int("n", 4, "Amount of bytes to read")
-	isRegexp = flag.Bool("r", false, "Assume needle is a regexp")
+	action = flag.String("action", "<nil>", "Action to perfom. One of: search, regexp-search, print")
+	pid    = flag.Int("pid", 0, "Process id to analyze")
+	addr   = flag.Int("addr", 0x0, "The initial address in the process address space to search/print")
+
+	// print action flags
+	size = flag.Int("n", 4, "Amount of bytes to print")
+
+	// search action flags
+	needle = flag.String("needle", "Find This!", "String to search for (interpreted as []byte)")
+
+	// regexp-search action flags
+	regexpString = flag.String("regexp", "regexp?", "Regexp to search for")
 )
+
+func logErrors(harderror error, softerrors []error) {
+	if harderror != nil {
+		log.Fatal(harderror)
+	}
+	for _, soft := range softerrors {
+		log.Print(soft)
+	}
+}
 
 func main() {
 	flag.Parse()
 
-	reader, err, _ := memaccess.NewProcessMemoryReader(uint(*pid))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer reader.Close()
+	proc, harderror, softerrors := process.OpenFromPid(uint(*pid))
+	logErrors(harderror, softerrors)
 
-	if *prnt {
-		buf := make([]byte, *size)
-		err, _ := reader.CopyMemory(uintptr(*addr), buf)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Println(string(buf))
-		return
-	}
+	switch *action {
 
-	if *isRegexp {
-		r, err := regexp.Compile(*needle)
-		if err != nil {
-			log.Fatal(err)
-		}
+	case "<nil>":
+		log.Fatal("Missing action flag.")
 
-		found, address, err, _ := memsearch.FindNextMatch(reader,
-			uintptr(*addr), r)
-		if err != nil {
-			log.Fatal(err)
-		} else if found {
+	case "search":
+		found, address, harderror, softerrors := memsearch.FindNext(proc, uintptr(*addr), []byte(*needle))
+		logErrors(harderror, softerrors)
+		if found {
 			log.Printf("Found in address: %x\n", address)
 		}
-		return
-	}
 
-	found, address, err, _ := memsearch.FindNext(reader,
-		uintptr(*addr), []byte(*needle))
-	if err != nil {
-		log.Fatal(err)
-	} else if found {
-		log.Printf("Found in address: %x\n", address)
+	case "regexp-search":
+		r, err := regexp.Compile(*regexpString)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		found, address, harderror, softerrors := memsearch.FindNextMatch(proc, uintptr(*addr), r)
+		logErrors(harderror, softerrors)
+		if found {
+			log.Printf("Found in address: %x\n", address)
+		}
+
+	case "print":
+		buf := make([]byte, *size)
+		harderror, softerrors = memaccess.CopyMemory(proc, uintptr(*addr), buf)
+		logErrors(harderror, softerrors)
+		log.Println(string(buf))
+
+	default:
+		log.Fatal("Unrecognized action ", *action)
 	}
 }
