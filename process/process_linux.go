@@ -24,8 +24,8 @@ func (p proc) Close() (harderror error, softerrors []error) {
 	return nil, nil
 }
 
-func (p proc) Handle() interface{} {
-	return nil
+func (p proc) Handle() uintptr {
+	return uintptr(p)
 }
 
 func getAllPids() (pids []uint, harderror error, softerrors []error) {

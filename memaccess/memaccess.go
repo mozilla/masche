@@ -1,38 +1,15 @@
 // This packages contains an interface for accessing other processes' memory.
 package memaccess
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/mozilla/masche/process"
+)
 
-// Creates a new ProcessMemoryReader for a given process.
-func NewProcessMemoryReader(pid uint) (reader ProcessMemoryReader, harderror error, softerrors []error) {
-	return newProcessMemoryReaderImpl(pid)
-}
-
-// This interface is used to access a process memory. For getting an instance
-// of a type implementing it you must call NewProcessMemoryReader function.
-type ProcessMemoryReader interface {
-	// Frees the resources attached to this interface.
-	Close() (harderror error, softerrors []error)
-
-	// Returns a memory region containing address, or the next readable region
-	// after address in case addresss is not in a readable region.
-	//
-	// If there aren't more regions available the special value
-	// NoRegionAvailable is returned.
-	NextReadableMemoryRegion(address uintptr) (region MemoryRegion, harderror error, softerrors []error)
-
-	// Fills the entire buffer with memory from the process starting in address (in the process address space).
-	// If there is not enough memory to read it returns a hard error. Note that this is not the only hard error it may
-	// return though.
-	CopyMemory(address uintptr, buffer []byte) (harderror error, softerrors []error)
-}
-
-// This struct represents a region of readable contiguos memory of a process.
+// MemoryRegion represents a region of readable contiguos memory of a process.
+// No readable memory can be available right next to this region, it's maximal in its upper bound.
 //
-// No readable memory can be available right next to this region, it's maximal
-// in its upper bound.
-//
-// Note that this region is not necessary equivalent to the OS's region, if any.
+// NOTE: This region is not necessary equivalent to the OS's region, if any.
 type MemoryRegion struct {
 	Address uintptr
 	Size    uint
@@ -45,21 +22,35 @@ func (m MemoryRegion) String() string {
 // A centinel value indicating that there is no more regions available.
 var NoRegionAvailable MemoryRegion
 
-// This type represents a function used for walking through the memory, see
-// WalkMemory for more details.
+// NextReadableMemoryRegion returns a memory region containing address, or the next readable region after address in
+// case addresss is not in a readable region.
+//
+// If there aren't more regions available the special value NoRegionAvailable is returned.
+func NextReadableMemoryRegion(p process.Process, address uintptr) (region MemoryRegion, harderror error,
+	softerrors []error) {
+	return nextReadableMemoryRegion(p, address)
+}
+
+// CopyMemory fills the entire buffer with memory from the process starting in address (in the process address space).
+// If there is not enough memory to read it returns a hard error. Note that this is not the only hard error it may
+// return though.
+func CopyMemory(p process.Process, address uintptr, buffer []byte) (harderror error, softerrors []error) {
+	return copyMemory(p, address, buffer)
+}
+
+// This type represents a function used for walking through the memory, see WalkMemory for more details.
 type WalkFunc func(address uintptr, buf []byte) (keepSearching bool)
 
-// WalkMemory reads all the memory of a process starting at a given address
-// reading upto bufSize bytes into a buffer, and calling walkFn with the buffer
-// and the start address of the memory in the buffer. If walkFn returns false
+// WalkMemory reads all the memory of a process starting at a given address reading upto bufSize bytes into a buffer,
+// and calling walkFn with the buffer and the start address of the memory in the buffer. If walkFn returns false
 // WalkMemory stop reading the memory.
-// It can call to walkFn with a smaller buffer when reading the last part of
-// a memory region.
-func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error,
+//
+// NOTE: It can call to walkFn with a smaller buffer when reading the last part of a memory region.
+func WalkMemory(p process.Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) (harderror error,
 	softerrors []error) {
 
 	var region MemoryRegion
-	region, harderror, softerrors = reader.NextReadableMemoryRegion(startAddress)
+	region, harderror, softerrors = NextReadableMemoryRegion(p, startAddress)
 	if harderror != nil {
 		return
 	}
@@ -71,13 +62,13 @@ func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, 
 
 	for region != NoRegionAvailable {
 
-		keepWalking, addr, err, serrs := walkRegion(reader, region, buf, walkFn)
+		keepWalking, addr, err, serrs := walkRegion(p, region, buf, walkFn)
 		softerrors = append(softerrors, serrs...)
 
 		if err != nil && retries > 0 {
 			// An error occurred: retry using the nearest region to the address that failed.
 			retries--
-			region, harderror, serrs = reader.NextReadableMemoryRegion(addr)
+			region, harderror, serrs = NextReadableMemoryRegion(p, addr)
 			softerrors = append(softerrors, serrs...)
 			if harderror != nil {
 				return
@@ -97,7 +88,7 @@ func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, 
 			return
 		}
 
-		region, harderror, serrs = reader.NextReadableMemoryRegion(region.Address + uintptr(region.Size))
+		region, harderror, serrs = NextReadableMemoryRegion(p, region.Address+uintptr(region.Size))
 		softerrors = append(softerrors, serrs...)
 		if harderror != nil {
 			return
@@ -115,7 +106,7 @@ func WalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, 
 //
 // If any of the calls to walkFn returns false, this function inmediatly returns, with keepWalking set to false and no
 // hard error.
-func walkRegion(reader ProcessMemoryReader, region MemoryRegion, buf []byte, walkFn WalkFunc) (keepWalking bool,
+func walkRegion(p process.Process, region MemoryRegion, buf []byte, walkFn WalkFunc) (keepWalking bool,
 	errorAddress uintptr, harderror error, softerrors []error) {
 	softerrors = make([]error, 0)
 	keepWalking = true
@@ -125,7 +116,7 @@ func walkRegion(reader ProcessMemoryReader, region MemoryRegion, buf []byte, wal
 			buf = buf[:remainingBytes]
 		}
 
-		err, serrs := reader.CopyMemory(addr, buf)
+		err, serrs := CopyMemory(p, addr, buf)
 		softerrors = append(softerrors, serrs...)
 
 		if err != nil {
@@ -150,7 +141,7 @@ func walkRegion(reader ProcessMemoryReader, region MemoryRegion, buf []byte, wal
 // then advances just half of the buffer size, and calls it again.
 // As with WalkRegion, the buffer can be smaller at the end of a region.
 // NOTE: It doesn't work with odd bufSize.
-func SlidingWalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize uint, walkFn WalkFunc) (
+func SlidingWalkMemory(p process.Process, startAddress uintptr, bufSize uint, walkFn WalkFunc) (
 	harderror error, softerrors []error) {
 
 	if bufSize%2 != 0 {
@@ -161,7 +152,7 @@ func SlidingWalkMemory(reader ProcessMemoryReader, startAddress uintptr, bufSize
 	halfBufferSize := bufSize / 2
 	currentBufferStartsAt := uintptr(0)
 	bufferedBytes := uint(0)
-	harderror, softerrors = WalkMemory(reader, startAddress, halfBufferSize,
+	harderror, softerrors = WalkMemory(p, startAddress, halfBufferSize,
 		func(address uintptr, currentBuffer []byte) (keepSearching bool) {
 
 			fromAnotherRegion := currentBufferStartsAt+uintptr(bufferedBytes) < address && currentBufferStartsAt != 0

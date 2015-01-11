@@ -11,14 +11,16 @@ type Process interface {
 	// Pid returns the process' pid.
 	Pid() uint
 
-	// Name returns the process' binary name.
+	// Name returns the process' binary full path.
 	Name() (name string, harderror error, softerrors []error)
 
 	// Closes this Process.
 	Close() (harderror error, softerrors []error)
 
-	// Handle returns the OS-specific internal representation of the process used in Masche.
-	Handle() interface{}
+	// Handle returns an opaque value which's meaning dependes on the OS-specific implementation of it.
+	// It works like an interface{} that you must cast, but we are using a uintptr because we need to return C values,
+	// and casting between them in different modules panics if you use interface{}.
+	Handle() uintptr
 }
 
 // OpenFromPid opens a process by its pid.
@@ -35,13 +37,16 @@ func GetAllPids() (pids []uint, harderror error, softerrors []error) {
 
 // OpenAll opens all the running processes returning a slice of Process.
 func OpenAll() (ps []Process, harderror error, softerrors []error) {
-	pids, err, _ := GetAllPids()
+	pids, err, softs := GetAllPids()
+	softerrs := make([]error, 0)
+	if softs != nil {
+		softerrs = append(softerrs, softs...)
+	}
 	if err != nil {
-		return nil, err, nil
+		return nil, err, softerrs
 	}
 
 	ps = make([]Process, 0)
-	softerrs := make([]error, 0)
 	for _, pid := range pids {
 		p, err, softs := OpenFromPid(pid)
 		if err != nil {

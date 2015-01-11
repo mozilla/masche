@@ -3,43 +3,25 @@ package memaccess
 import (
 	"bufio"
 	"fmt"
+	"github.com/mozilla/masche/process"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-type process struct {
-	pid          uint
-	mapsFilepath string
-	memFilepath  string
+func mapsFilePathFromPid(pid uint) string {
+	return filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
 }
 
-func newProcessMemoryReaderImpl(pid uint) (process, error, []error) {
-	var result process
-	result.pid = pid
-	result.mapsFilepath = filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
-	result.memFilepath = filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
-	softerrors := make([]error, 0)
-
-	// trying to open the maps file, only to see if we have enought privileges
-	f, harderror := os.Open(result.mapsFilepath)
-	if harderror != nil {
-		return process{}, harderror, softerrors
-	}
-	f.Close()
-
-	return result, nil, softerrors
+func memFilePathFromPid(pid uint) string {
+	return filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
 }
 
-func (p process) Close() (error, []error) {
-	return nil, make([]error, 0)
-}
+func nextReadableMemoryRegion(p process.Process, address uintptr) (region MemoryRegion, harderror error,
+	softerrors []error) {
 
-func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion, harderror error, softerrors []error) {
-	softerrors = make([]error, 0)
-
-	mapsFile, harderror := os.Open(p.mapsFilepath)
+	mapsFile, harderror := os.Open(mapsFilePathFromPid(p.Pid()))
 	if harderror != nil {
 		return
 	}
@@ -47,7 +29,7 @@ func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion,
 
 	region = MemoryRegion{}
 	scanner := bufio.NewScanner(mapsFile)
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		items := splitMapsEntry(line)
@@ -109,9 +91,9 @@ func (p process) NextReadableMemoryRegion(address uintptr) (region MemoryRegion,
 	return NoRegionAvailable, nil, softerrors
 }
 
-func (p process) CopyMemory(address uintptr, buffer []byte) (error, []error) {
-	mem, harderror := os.Open(p.memFilepath)
-	softerrors := make([]error, 0)
+func copyMemory(p process.Process, address uintptr, buffer []byte) (harderror error, softerrors []error) {
+	mem, harderror := os.Open(memFilePathFromPid(p.Pid()))
+
 	if harderror != nil {
 		harderror := fmt.Errorf("Error while reading %d bytes starting at %x: %s", len(buffer), address, harderror)
 		return harderror, softerrors

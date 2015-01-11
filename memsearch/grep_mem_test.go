@@ -1,7 +1,7 @@
 package memsearch
 
 import (
-	"github.com/mozilla/masche/memaccess"
+	"github.com/mozilla/masche/process"
 	"github.com/mozilla/masche/test"
 	"regexp"
 	"testing"
@@ -37,15 +37,15 @@ func TestSearchInOtherProcess(t *testing.T) {
 	defer cmd.Process.Kill()
 
 	pid := uint(cmd.Process.Pid)
-	reader, err, softerrors := memaccess.NewProcessMemoryReader(pid)
+	proc, err, softerrors := process.OpenFromPid(pid)
 	test.PrintSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	defer proc.Close()
 
 	for i, buf := range buffersToFind {
-		found, _, err, softerrors := FindNext(reader, 0, buf)
+		found, _, err, softerrors := FindNext(proc, 0, buf)
 		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
@@ -55,7 +55,7 @@ func TestSearchInOtherProcess(t *testing.T) {
 	}
 
 	// This must not be present
-	found, _, err, softerrors := FindNext(reader, 0, notPresent)
+	found, _, err, softerrors := FindNext(proc, 0, notPresent)
 	test.PrintSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
@@ -72,12 +72,12 @@ func TestRegexpSearchInOtherProcess(t *testing.T) {
 	defer cmd.Process.Kill()
 
 	pid := uint(cmd.Process.Pid)
-	reader, err, softerrors := memaccess.NewProcessMemoryReader(pid)
+	proc, err, softerrors := process.OpenFromPid(pid)
 	test.PrintSoftErrors(softerrors)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	defer proc.Close()
 
 	for i, str := range regexpToMatch {
 		r, err := regexp.Compile(str)
@@ -85,7 +85,7 @@ func TestRegexpSearchInOtherProcess(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		found, _, err, softerrors := FindNextMatch(reader, 0, r)
+		found, _, err, softerrors := FindNextMatch(proc, 0, r)
 		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
@@ -101,7 +101,7 @@ func TestRegexpSearchInOtherProcess(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		found, _, err, softerrors := FindNextMatch(reader, 0, r)
+		found, _, err, softerrors := FindNextMatch(proc, 0, r)
 		test.PrintSoftErrors(softerrors)
 		if err != nil {
 			t.Fatal(err)
