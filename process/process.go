@@ -36,6 +36,8 @@ func GetAllPids() (pids []uint, harderror error, softerrors []error) {
 }
 
 // OpenAll opens all the running processes returning a slice of Process.
+// A race condition may make this generate some softerrors because from the time pids are get to actually opened some
+// of them may have dead.
 func OpenAll() (ps []Process, harderror error, softerrors []error) {
 	pids, err, softs := GetAllPids()
 	softerrs := make([]error, 0)
