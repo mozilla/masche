@@ -16,6 +16,52 @@ typedef struct {
     char *description;
 } error_t;
 
+#ifdef _WIN32
+
+#include <windows.h>
+
+/**
+ * error_create receives an Windows Error Code and returns an error_t with
+ * that number and its description.
+ *
+ * A common usage for this function is error_t *err = error_create(GetLastError());
+ **/
+static error_t *error_create(DWORD error_number) {
+    error_t *err = calloc(1, sizeof * err);
+    err->error_number = error_number;
+
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        error_number,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR) & (err->description),
+        0, NULL );
+
+    return err;
+}
+#endif /* _WIN32 */
+
+/**
+ * Frees an error_t.
+ **/
+static void error_free(error_t *error) {
+    if (error == NULL) {
+        return;
+    }
+
+#ifdef _WIN32
+    // In win32 errors are created with FormatMessage and
+    // must be freed with LocalFree
+    LocalFree(error->description);
+#else
+    free(error->description);
+#endif
+    free(error);
+}
+
 /**
  * This struct represents the error releated parts of a response to a function
  * call.
@@ -38,17 +84,6 @@ typedef struct {
  * other modules to compile a C file from here and link themselves against it.
  **/
 
-/**
- * Frees an error_t.
- **/
-static void error_free(error_t *error) {
-    if (error == NULL) {
-        return;
-    }
-
-    free(error->description);
-    free(error);
-}
 
 /**
  * Creates a new response without any error.

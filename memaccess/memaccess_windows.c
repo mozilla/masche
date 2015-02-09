@@ -32,39 +32,6 @@ static response_t *response_create() {
     return calloc(1, sizeof(response_t));
 }
 
-/**
- * error_create receives an Windows Error Code and returns an error_t with
- * that number and its description.
- *
- * A common usage for this function is error_t *err = error_create(GetLastError());
- **/
-static error_t *error_create(DWORD error_number) {
-    error_t *err = calloc(1, sizeof * err);
-    err->error_number = error_number;
-
-    FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER |
-        FORMAT_MESSAGE_FROM_SYSTEM |
-        FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL,
-        error_number,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPTSTR) & (err->description),
-        0, NULL );
-
-    return err;
-}
-
-/**
- * error_free releases the resources of a given error_t *
- **/
-static void error_free(error_t *err) {
-    if (err == NULL) {
-        return;
-    }
-    LocalFree(err->description);
-    free(err);
-}
 
 
 response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
