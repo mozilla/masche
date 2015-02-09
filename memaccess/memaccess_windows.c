@@ -4,61 +4,6 @@
 #include "memaccess.h"
 
 inline static BOOL is_readable(MEMORY_BASIC_INFORMATION info);
-static response_t *response_create();
-static error_t *error_create(DWORD error_number);
-static void error_free(error_t *err);
-
-void response_free(response_t *response) {
-    if (response == NULL) {
-        return;
-    }
-
-    error_free(response->fatal_error);
-    if (response->soft_errors != NULL) {
-        for (size_t i = 0; i < response->soft_errors_count; i++) {
-            LocalFree(response->soft_errors[i].description);
-        }
-        free(response->soft_errors);
-
-
-    }
-    free(response);
-}
-
-/**
- * Creates a new response without any error.
- **/
-static response_t *response_create() {
-    return calloc(1, sizeof(response_t));
-}
-
-
-
-response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
-    response_t *res = response_create();
-
-    *handle = (uintptr_t) OpenProcess(PROCESS_QUERY_INFORMATION |
-                                      PROCESS_VM_READ,
-                                      FALSE,
-                                      pid);
-
-    if (*handle == 0) {
-        res->fatal_error = error_create(GetLastError());
-    }
-
-    return res;
-}
-
-response_t *close_process_handle(process_handle_t process_handle) {
-    //TODO(mvanotti): See which errors should be considered hard and which ones soft.
-    response_t *res = response_create();
-    BOOL success = CloseHandle((HANDLE) process_handle);
-    if (!success) {
-        res->fatal_error = error_create(GetLastError());
-    }
-
-    return res;
-}
 
 response_t *get_next_readable_memory_region(process_handle_t handle,
         memory_address_t address, bool *region_available,
