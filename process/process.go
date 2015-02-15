@@ -3,7 +3,10 @@
 // and then use them from in other masche modules, because they are already open.
 package process
 
-import "regexp"
+import (
+	"fmt"
+	"regexp"
+)
 
 // Process type represents a running processes that can be used by other modules.
 // In order to get a Process on of the Open* functions must be called, and once it's not needed it must be closed.
@@ -52,7 +55,7 @@ func OpenAll() (ps []Process, harderror error, softerrors []error) {
 	for _, pid := range pids {
 		p, err, softs := OpenFromPid(pid)
 		if err != nil {
-			softerrs = append(softerrs, err)
+			softerrs = append(softerrs, fmt.Errorf("Pid: %d failed to Open. Error: %v", pid, err))
 			continue
 		}
 		if softs != nil {
