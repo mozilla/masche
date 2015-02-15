@@ -21,7 +21,7 @@ func (p process) Name() (name string, harderror error, softerrors []error) {
 
 	harderror, softerrors = cresponse.GetResponsesErrors(unsafe.Pointer(r))
 	C.response_free(r)
-	if harderror != nil {
+	if harderror == nil {
 		name = C.GoString((*C.char)(unsafe.Pointer(cname)))
 		C.free(unsafe.Pointer(cname))
 	}
@@ -35,15 +35,20 @@ func getAllPids() (pids []uint, harderror error, softerrors []error) {
 		return nil, fmt.Errorf("getAllPids failed with error %d", r.error), nil
 	}
 
-	pids = make([]uint, r.length)
+	pids = make([]uint, 0, r.length)
 	// We use this to access C arrays without doing manual pointer arithmetic.
 	cpids := *(*[]C.DWORD)(unsafe.Pointer(
 		&reflect.SliceHeader{
 			Data: uintptr(unsafe.Pointer(r.pids)),
 			Len:  int(r.length),
 			Cap:  int(r.length)}))
-	for i, _ := range pids {
-		pids[i] = uint(cpids[i])
+	for i, _ := range cpids {
+		pid := uint(cpids[i])
+		// pids 0 and 4 are reserved in windows.
+		if pid == 0 || pid == 4 {
+			continue
+		}
+		pids = append(pids, pid)
 	}
 
 	return pids, nil, nil
