@@ -1,8 +1,9 @@
 package listlibs
 
 import (
-	"github.com/mozilla/masche/process"
 	"regexp"
+
+	"github.com/mozilla/masche/process"
 )
 
 // ListLoadedLibraries lists all the libraries (their absolute paths) loaded by a process.

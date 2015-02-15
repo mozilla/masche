@@ -28,11 +28,11 @@ EnumProcessModulesResponse *getModules(process_handle_t process_handle) {
 
         BOOL success = EnumProcessModulesEx(hProcess, aMods,
                                             size, &cbNeeded,
-                                            0x03);
-//TODO(mvanotti): Fix and replace the 0x03 to LIST_MODULES_ALL
+                                            LIST_MODULES_ALL);
         if (!success) {
             res->error = GetLastError();
-            goto closeHandle;
+            free(aMods);
+            return res;
         }
     } while (cbNeeded == size);
 
@@ -67,11 +67,6 @@ EnumProcessModulesResponse *getModules(process_handle_t process_handle) {
     res->modules = modsInfo;
     res->length = mCount;
 
-closeHandle:
-    if (!CloseHandle(hProcess)) {
-        res->error = GetLastError();
-        goto cleanup;
-    }
     free(aMods);
 
     return res;
@@ -87,7 +82,6 @@ cleanup:
 
     free(aMods);
 
-    CloseHandle(hProcess);
     return res;
 }
 
