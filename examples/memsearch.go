@@ -6,16 +6,20 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
+	"io/ioutil"
+	"log"
+	"regexp"
+	"strings"
+
 	"github.com/mozilla/masche/memaccess"
 	"github.com/mozilla/masche/memsearch"
 	"github.com/mozilla/masche/process"
-	"log"
-	"regexp"
 )
 
 var (
-	action = flag.String("action", "<nil>", "Action to perfom. One of: search, regexp-search, print")
+	action = flag.String("action", "<nil>", "Action to perfom. One of: search, regexp-search, file-search, print")
 	pid    = flag.Int("pid", 0, "Process id to analyze")
 	addr   = flag.Int("addr", 0x0, "The initial address in the process address space to search/print")
 
@@ -27,6 +31,9 @@ var (
 
 	// regexp-search action flags
 	regexpString = flag.String("regexp", "regexp?", "Regexp to search for")
+
+	// file-search action flags
+	fileneedle = flag.String("fileneedle", "example.in", "Filename that contains hex-encoded needle (spaces are ignored)")
 )
 
 func logErrors(harderror error, softerrors []error) {
@@ -48,6 +55,21 @@ func main() {
 
 	case "<nil>":
 		log.Fatal("Missing action flag.")
+	case "file-search":
+		data, err := ioutil.ReadFile(*fileneedle)
+		if err != nil {
+			log.Fatal(err)
+		}
+		encoded := strings.Replace(strings.TrimSpace(string(data)), " ", "", -1)
+		data, err = hex.DecodeString(encoded)
+		if err != nil {
+			log.Fatal(err)
+		}
+		found, address, harderror, softerrors := memsearch.FindBytesSequence(proc, uintptr(*addr), data)
+		logErrors(harderror, softerrors)
+		if found {
+			log.Printf("Found in address: %x\n", address)
+		}
 
 	case "search":
 		found, address, harderror, softerrors := memsearch.FindBytesSequence(proc, uintptr(*addr), []byte(*needle))
