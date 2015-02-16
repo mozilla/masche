@@ -44,9 +44,9 @@ EnumProcessModulesResponse *getModules(process_handle_t process_handle) {
     modsInfo = calloc(mCount, sizeof * modsInfo);
     for (i = 0; i < mCount; i++) {
         TCHAR buf[MAX_PATH + 1];
-        BOOL success = GetModuleFileNameEx(hProcess, aMods[i], buf,
+        DWORD len = GetModuleFileNameEx(hProcess, aMods[i], buf,
                                            sizeof(buf) / sizeof(TCHAR));
-        if (!success) {
+        if (len == 0) {
             res->error = GetLastError();
             goto cleanup;
         }
@@ -56,7 +56,7 @@ EnumProcessModulesResponse *getModules(process_handle_t process_handle) {
         // is there safer way to convert from TCHAR * to char *?
 
         MODULEINFO info;
-        success = GetModuleInformation(hProcess, aMods[i], &info, sizeof(info));
+        BOOL success = GetModuleInformation(hProcess, aMods[i], &info, sizeof(info));
         if (!success) {
             res->error = GetLastError();
             goto cleanup;
