@@ -1,5 +1,7 @@
 #include "process.h"
 #include "process_windows.h"
+#include <tchar.h>
+#include <string.h>
 
 response_t *open_process_handle(pid_tt pid, process_handle_t *handle) {
     response_t *res = response_create();
@@ -62,30 +64,24 @@ void EnumProcessesResponse_Free(EnumProcessesResponse *r) {
 
 response_t *GetProcessName(process_handle_t hndl, char **name) {
     response_t *res = response_create();
-    DWORD bufSize = 128;
-    char *buf = calloc(bufSize, sizeof * buf);
-    //TODO(mvanotti): GetProcessImageFileName returns the name in "Device Format"
-    // ej. \Device\HardDiskVolume4\Windows\foo.exe We can use another function to get it
-    // in "normal" format ( C:\Windows\foo.exe )
-    DWORD r;
-    do {
-        r = GetProcessImageFileName((HANDLE) hndl, buf, bufSize);
-        if (r == 0) {
-            DWORD error = GetLastError();
-            // This is the only error that we know how to handle:
-            // use a bigger buffer.
-            if (error == ERROR_INSUFFICIENT_BUFFER) {
-                bufSize *= 2;
-                buf = realloc(buf, bufSize);
-            } else {
-                free(buf);
-                res->fatal_error = error_create(error);
-                return res;
-            }
-        }
-    } while (r == 0);
+    HMODULE hMod;
+    DWORD cbNeeded;
+    // The first module is the executable.
+    BOOL success = EnumProcessModules( (HANDLE) hndl, &hMod, sizeof(hMod), &cbNeeded);
+    if (!success) {
+        res->fatal_error = error_create(GetLastError());
+        return res;
+    }
 
-    *name = _strdup(buf);
-    free(buf);
+    TCHAR buf[MAX_PATH + 1];
+    
+    DWORD len = GetModuleFileNameEx((HANDLE) hndl, hMod, buf, sizeof(buf) / sizeof(TCHAR)); 
+    if (len == 0) {
+        res->fatal_error = error_create(GetLastError());
+        return res;
+    }
+    buf[MAX_PATH] = '\0';
+
+    *name = (char *) _tcsdup(buf);
     return res;
 }
