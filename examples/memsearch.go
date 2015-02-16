@@ -60,7 +60,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		encoded := strings.Replace(strings.TrimSpace(string(data)), " ", "", -1)
+		encoded := strings.Replace(strings.Replace(strings.TrimSpace(string(data)), " ", "", -1), "\n", "", -1)
 		data, err = hex.DecodeString(encoded)
 		if err != nil {
 			log.Fatal(err)
