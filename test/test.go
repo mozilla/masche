@@ -7,18 +7,25 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 func GetTestCasePath() string {
 	//TODO: Right now the command is hardcoded. We should decide how to fix this.
 	dirPath, err := filepath.Abs("../test/tools")
+	testFileName := "test"
+
+	// Ugly hack for windows: The testFileName must end in .exe
+	if runtime.GOOS == "windows" {
+		testFileName = "test.exe"
+	}
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(-1)
 	}
 
-	path, err := filepath.EvalSymlinks(filepath.Join(dirPath, "test"))
+	path, err := filepath.EvalSymlinks(filepath.Join(dirPath, testFileName))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(-1)
