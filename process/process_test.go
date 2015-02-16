@@ -1,7 +1,6 @@
 package process
 
 import (
-	"log"
 	"regexp"
 	"testing"
 
@@ -24,9 +23,7 @@ func TestOpenFromPid(t *testing.T) {
 	}
 }
 
-// TODO(mvanotti): Fix this test for windows:
-// Right now windows is reporting names in Device Format, which is different to the TestCasePath
-func testProcessName(t *testing.T) {
+func TestProcessName(t *testing.T) {
 	cmd, err := test.LaunchTestCase()
 	if err != nil {
 		t.Fatal(err)
@@ -48,12 +45,10 @@ func testProcessName(t *testing.T) {
 	}
 
 	if name != test.GetTestCasePath() {
-		//t.Error("Expected name", test.GetTestCasePath(), "and got", name)
+		t.Error("Expected name", test.GetTestCasePath(), "and got", name)
 	}
 }
 
-// TODO(mvanotti): Fix this test for windows:
-// Right now windows is reporting names in Device Format, which is different to the TestCasePath
 func TestOpenByName(t *testing.T) {
 	cmd, err := test.LaunchTestCase()
 	if err != nil {
@@ -77,7 +72,7 @@ func TestOpenByName(t *testing.T) {
 		}
 
 		if name != test.GetTestCasePath() {
-			//t.Error("Expected name", test.GetTestCasePath(), "and got", name)
+			t.Error("Expected name", test.GetTestCasePath(), "and got", name)
 		}
 	}
 }
