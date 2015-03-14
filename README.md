@@ -17,6 +17,8 @@ You can find examples under the examples folder.
 
 ## Compiling
 
+You need `golang` installed.
+
 ### Linux
 You need glibc for 64 and 32 bits installed. On Fedora, the packages are:
 * glibc-devel.i686
