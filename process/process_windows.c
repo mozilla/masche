@@ -1,5 +1,6 @@
 #include "process.h"
 #include "process_windows.h"
+#include <psapi.h>
 #include <tchar.h>
 #include <string.h>
 
