@@ -6,6 +6,12 @@
 #include <stdio.h>
 #include <tchar.h>
 
+// Ugly hack for mingw64
+// Some versions don't have LIST_MODULES_ALL defined in psapi.h
+#ifndef LIST_MODULES_ALL
+#define LIST_MODULES_ALL 0x03
+#endif
+
 // getModules retrieves all the modules for a process with their info.
 // it calls GetModuleFilenameEx and GetModuleInformation on the module.
 // Caller must call EnumProcessModulesResponse_Free even if there's an error.
