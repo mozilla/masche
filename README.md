@@ -31,3 +31,10 @@ You need glibc for 64 and 32 bits installed. On Fedora, the packages are:
 ### Windows
 
 In order to compile and run masche in windows you will need a gcc compiler. You can use mingw if you are running a 32 bits version of Windows or mingw-64 if you are running a 64 bits one.
+Just run `go build` on the package/example that you want.
+
+It's possible to cross-compile from linux. And this is the recommended way.
+* Install a cross compiler (for example, `mingw-w64`)
+* Enable cross compiling in your go toolchain (run `GOOS=windows ./all.bash` inside your `$GOROOT/src` folder)
+
+After that you should be able to cross compile masche without problems, just make sure to export the correct global variables: `GOOS=windows` `CGO_ENABLED=1` `CC=<your-cross-compiler>` (for example: `CC=x86_64-w64-ming32-gcc` )
