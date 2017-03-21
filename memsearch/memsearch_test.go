@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-var needle []byte = []byte("Find This!")
+var needle = []byte("Find This!")
 
 var buffersToFind = [][]byte{
 	[]byte{0xc, 0xa, 0xf, 0xe},

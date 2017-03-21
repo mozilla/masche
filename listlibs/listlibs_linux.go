@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func listLoadedLibraries(p process.Process) (libraries []string, harderror error, softerrors []error) {
+func listLoadedLibraries(p process.Process) (libraries []string, softerrors []error, harderror error) {
 
 	mapsFile, harderror := os.Open(common.MapsFilePathFromPid(p.Pid()))
 	if harderror != nil {
