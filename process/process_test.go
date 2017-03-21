@@ -57,7 +57,7 @@ func TestOpenByName(t *testing.T) {
 	defer cmd.Process.Kill()
 
 	r := regexp.MustCompile("test[/\\\\]tools[/\\\\]test")
-	procs, err, softerrors := OpenByName(r)
+	procs, _, softerrors := OpenByName(r)
 	defer CloseAll(procs)
 	test.PrintSoftErrors(softerrors)
 	if len(procs) == 0 {
