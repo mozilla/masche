@@ -74,11 +74,11 @@ func TestCopyMemory(t *testing.T) {
 		t.Error("No starting region returned")
 	}
 
-	min_region_size := uint(os.Getpagesize() + 100) // one page plus something
+	minRegionSize := uint(os.Getpagesize() + 100) // one page plus something
 
-	for region.Size < min_region_size {
+	for region.Size < minRegionSize {
 		if region == NoRegionAvailable {
-			t.Fatal("We couldn't find a region of %d bytes", min_region_size)
+			t.Fatal("We couldn't find a region of %d bytes", minRegionSize)
 		}
 
 		region, err, softerrors = NextReadableMemoryRegion(proc, region.Address+uintptr(region.Size))
@@ -91,7 +91,7 @@ func TestCopyMemory(t *testing.T) {
 	buffers := [][]byte{
 		make([]byte, 2),
 		make([]byte, os.Getpagesize()),
-		make([]byte, min_region_size),
+		make([]byte, minRegionSize),
 	}
 
 	for _, buffer := range buffers {
@@ -99,21 +99,21 @@ func TestCopyMemory(t *testing.T) {
 		err, softerrors = CopyMemory(proc, region.Address, buffer)
 		test.PrintSoftErrors(softerrors)
 		if err != nil {
-			t.Error(fmt.Sprintf("Couldn't read %d bytes from region", len(buffer)))
+			t.Errorf("Couldn't read %d bytes from region", len(buffer))
 		}
 
 		// Crossing boundaries
 		err, softerrors = CopyMemory(proc, region.Address+uintptr(region.Size)-uintptr(len(buffer)/2), buffer)
 		test.PrintSoftErrors(softerrors)
 		if err == nil {
-			t.Error(fmt.Sprintf("Read %d bytes inbetween regions", len(buffer)))
+			t.Errorf("Read %d bytes inbetween regions", len(buffer))
 		}
 
 		// Entirely outside region
 		err, softerrors = CopyMemory(proc, region.Address+uintptr(region.Size), buffer)
 		test.PrintSoftErrors(softerrors)
 		if err == nil {
-			t.Error(fmt.Sprintf("Read %d bytes after the region", len(buffer)))
+			t.Errorf("Read %d bytes after the region", len(buffer))
 		}
 	}
 
@@ -200,10 +200,10 @@ func TestWalkRegionReadsEntireRegion(t *testing.T) {
 		t.Error("No starting region returned")
 	}
 
-	min_region_size := bufferSizes[len(bufferSizes)-1]
-	for region.Size < min_region_size {
+	minRegionSize := bufferSizes[len(bufferSizes)-1]
+	for region.Size < minRegionSize {
 		if region == NoRegionAvailable {
-			t.Fatal("We couldn't find a region of %d bytes", min_region_size)
+			t.Fatal("We couldn't find a region of %d bytes", minRegionSize)
 		}
 
 		region, err, softerrors = NextReadableMemoryRegion(proc, region.Address+uintptr(region.Size))
@@ -227,8 +227,8 @@ func TestWalkRegionReadsEntireRegion(t *testing.T) {
 
 				readRegionLimit := readRegion.Address + uintptr(readRegion.Size)
 				if readRegionLimit != address {
-					t.Error(fmt.Sprintf("walkRegion skept %d bytes starting at %x", address-readRegionLimit,
-						readRegionLimit))
+					t.Errorf("walkRegion skept %d bytes starting at %x", address-readRegionLimit,
+						readRegionLimit)
 					return false
 				}
 
@@ -241,7 +241,7 @@ func TestWalkRegionReadsEntireRegion(t *testing.T) {
 		}
 
 		if region != readRegion {
-			t.Error(fmt.Sprintf("%v not entirely read", region))
+			t.Errorf("%v not entirely read", region)
 		}
 	}
 }
@@ -284,24 +284,24 @@ func TestSlidingWalkMemory(t *testing.T) {
 
 			if regionIsContigous {
 				if regionIsContigous {
-					t.Error(fmt.Sprintf("Contigous buffer while we are expecting overlapped ones."+
-						"buffer size %d - lastRegion %v - currentRegion %v", size, lastRegion, currentRegion))
+					t.Errorf("Contigous buffer while we are expecting overlapped ones."+
+						"buffer size %d - lastRegion %v - currentRegion %v", size, lastRegion, currentRegion)
 				}
 				return false
 			}
 
 			// If the last buffer wasn't read complete the current one can't be overlapped
 			if lastRegion.Size != size && overlappedBytes > 0 {
-				t.Error(fmt.Sprintf("Overlapped buffer after non-complete one. "+
-					"buffer size %d - lastRegion %v - currentRegion %v", size, lastRegion, currentRegion))
+				t.Errorf("Overlapped buffer after non-complete one. "+
+					"buffer size %d - lastRegion %v - currentRegion %v", size, lastRegion, currentRegion)
 				return false
 			}
 
 			// Overlapped bytes should be half of the buffer, or the buffer must came from another region
 			if overlappedBytes != uintptr(size/2) && overlappedBytes != 0 {
-				t.Error(fmt.Sprintf("Overlapping buffer by %d bytes. "+
+				t.Errorf("Overlapping buffer by %d bytes. "+
 					"buffer size %d - lastRegion %v - currentRegion %v", overlappedBytes, size, lastRegion,
-					currentRegion))
+					currentRegion)
 				return false
 			}
 
