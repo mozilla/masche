@@ -42,13 +42,13 @@ func GetAllPids() (pids []uint, softerrors []error, harderror error) {
 // A race condition may make this generate some softerrors because from the time pids are get to actually opened some
 // of them may have dead.
 func OpenAll() (ps []Process, softerrors []error, harderror error) {
-	pids, err, softs := GetAllPids()
+	pids, softs, err := GetAllPids()
 	var softerrs []error
 	if softs != nil {
 		softerrs = append(softerrs, softs...)
 	}
 	if err != nil {
-		return nil, err, softerrs
+		return nil, softerrs, err
 	}
 
 	ps = make([]Process, 0)
@@ -63,7 +63,7 @@ func OpenAll() (ps []Process, softerrors []error, harderror error) {
 		}
 		ps = append(ps, p)
 	}
-	return ps, nil, softerrs
+	return ps, softerrs, nil
 }
 
 // CloseAll closes all the processes from the given slice.
@@ -86,9 +86,9 @@ func CloseAll(ps []Process) (harderrors []error, softerrors []error) {
 
 // OpenByName receives a Regexp an returns a slice with all the Processes whose name matches it.
 func OpenByName(r *regexp.Regexp) (ps []Process, softerrors []error, harderror error) {
-	procs, harderror, softerrors := OpenAll()
+	procs, softerrors, harderror := OpenAll()
 	if harderror != nil {
-		return nil, harderror, nil
+		return nil, nil, harderror
 	}
 
 	var matchs []Process
@@ -109,5 +109,5 @@ func OpenByName(r *regexp.Regexp) (ps []Process, softerrors []error, harderror e
 		}
 	}
 
-	return matchs, nil, softerrors
+	return matchs, softerrors, nil 
 }

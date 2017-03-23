@@ -28,11 +28,11 @@ func (p process) Name() (name string, harderror error, softerrors []error) {
 	return
 }
 
-func getAllPids() (pids []uint, harderror error, softerrors []error) {
+func getAllPids() (pids []uint, softerrors []error, harderror error) {
 	r := C.getAllPids()
 	defer C.EnumProcessesResponse_Free(r)
 	if r.error != 0 {
-		return nil, fmt.Errorf("getAllPids failed with error %d", r.error), nil
+		return nil, nil, fmt.Errorf("getAllPids failed with error %d", r.error)
 	}
 
 	pids = make([]uint, 0, r.length)
