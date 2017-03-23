@@ -30,13 +30,13 @@ func (p proc) Name() (name string, softerrors []error, harderror error) {
 		statusPath := filepath.Join("/proc", fmt.Sprintf("%d", p.Pid()), "status")
 		statusFile, err := os.Open(statusPath)
 		if err != nil {
-			return name, err, nil
+			return name, nil, err
 		}
 
 		r := bufio.NewReader(statusFile)
 		for line, _, err := r.ReadLine(); err != io.EOF; line, _, err = r.ReadLine() {
 			if err != nil {
-				return name, err, nil
+				return name, nil, err
 			}
 
 			namePrefix := "Name:"
@@ -65,7 +65,7 @@ func (p proc) Handle() uintptr {
 func getAllPids() (pids []uint, softerrors []error, harderror error) {
 	files, err := ioutil.ReadDir("/proc/")
 	if err != nil {
-		return nil, err, nil
+		return nil, nil, err
 	}
 
 	pids = make([]uint, 0)
