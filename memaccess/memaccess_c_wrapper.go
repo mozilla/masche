@@ -13,8 +13,8 @@ import (
 	"unsafe"
 )
 
-func nextReadableMemoryRegion(p process.Process, address uintptr) (region MemoryRegion, harderror error,
-	softerrors []error) {
+func nextReadableMemoryRegion(p process.Process, address uintptr) (region MemoryRegion, softerrors []error, harderror error,
+) {
 
 	var isAvailable C.bool
 	var cRegion C.memory_region_t
@@ -34,7 +34,7 @@ func nextReadableMemoryRegion(p process.Process, address uintptr) (region Memory
 	return MemoryRegion{uintptr(cRegion.start_address), uint(cRegion.length)}, harderror, softerrors
 }
 
-func copyMemory(p process.Process, address uintptr, buffer []byte) (harderror error, softerrors []error) {
+func copyMemory(p process.Process, address uintptr, buffer []byte) (softerrors []error, harderror error) {
 	buf := unsafe.Pointer(&buffer[0])
 
 	n := len(buffer)
