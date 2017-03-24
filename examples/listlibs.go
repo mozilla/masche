@@ -54,7 +54,7 @@ func main() {
 
 }
 
-func findProcWithLib(r *regexp.Regexp, ps []process.Process) (matches map[process.Process][]string, harderror error, softerrors []error) {
+func findProcWithLib(r *regexp.Regexp, ps []process.Process) (matches map[process.Process][]string, softerrors []error, harderror error) {
 	matches = make(map[process.Process][]string)
 	softerrors = make([]error, 0)
 	for _, p := range ps {
