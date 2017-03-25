@@ -7,12 +7,12 @@ import (
 	"strings"
 )
 
-// MapsFilePathFromPid method maps joins "maps" file path with Pid
+// MapsFilePathFromPid returns the memory maps file path for a given process id. 
 func MapsFilePathFromPid(pid uint) string {
 	return filepath.Join("/proc", fmt.Sprintf("%d", pid), "maps")
 }
 
-// MemFilePathFromPid method joins "mem" file path with Pid
+// MemFilePathFromPid method returns the path of the process' memory file.
 func MemFilePathFromPid(pid uint) string {
 	return filepath.Join("/proc", fmt.Sprintf("%d", pid), "mem")
 }

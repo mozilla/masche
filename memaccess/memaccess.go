@@ -22,8 +22,9 @@ func (m MemoryRegion) String() string {
 // NoRegionAvailable is a centinel value indicating that there is no more regions available.
 var NoRegionAvailable MemoryRegion
 
-// NextReadableMemoryRegion returns next readable memory region. If there aren't more regions available the special
-// value NoRegionAvailable is returned.
+// NextReadableMemoryRegion returns a memory region containing address, or the next readable region after address in
+// case addresss is not in a readable region. If there aren't more regions available the special value NoRegionAvailable
+// is returned.
 func NextReadableMemoryRegion(p process.Process, address uintptr) (region MemoryRegion, softerrors []error,
 	harderror error) {
 	return nextReadableMemoryRegion(p, address)
