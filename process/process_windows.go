@@ -19,7 +19,7 @@ func (p process) Name() (name string, softerrors []error, harderror error) {
 	var cname uintptr
 	r := C.GetProcessName(p.hndl, (**C.char)(unsafe.Pointer(&cname)))
 
-	harderror, softerrors = cresponse.GetResponsesErrors(unsafe.Pointer(r))
+	softerrors,harderror = cresponse.GetResponsesErrors(unsafe.Pointer(r))
 	C.response_free(r)
 	if harderror == nil {
 		name = C.GoString((*C.char)(unsafe.Pointer(cname)))
@@ -28,11 +28,11 @@ func (p process) Name() (name string, softerrors []error, harderror error) {
 	return
 }
 
-func getAllPids() (pids []uint, harderror error, softerrors []error) {
+func getAllPids() (pids []uint, softerrors []error, harderror error) {
 	r := C.getAllPids()
 	defer C.EnumProcessesResponse_Free(r)
 	if r.error != 0 {
-		return nil, fmt.Errorf("getAllPids failed with error %d", r.error), nil
+		return nil, nil, fmt.Errorf("getAllPids failed with error %d", r.error)
 	}
 
 	pids = make([]uint, 0, r.length)
