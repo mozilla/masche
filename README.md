@@ -3,6 +3,15 @@ MASCHE
 ![MASCHE image (Javier Mascherano)](http://i.imgur.com/V3EMjswm.jpg)
 **MIG Memory Forensic library**
 
+⚠️ Deprecation Notice ⚠️
+-------------------------
+
+Mozilla is no longer maintaining the Mozilla InvestiGator (MIG) project.
+
+Mozilla is also no longer making use of this code internally.
+
+You are welcome to use this code as is with no warranty. Please fork it to continue development.
+
 **MASCHE** stands for **Memory Analysis Suite for Checking the Harmony of Endpoints**. It is being developed as a project for the *Mozilla Winter of Security program*.
 
 It works on **Linux**, **Mac OS** and **Windows**.
